@@ -3,8 +3,8 @@ type rel
 
 type 'a t = private
   { dir: string list
-  ; basename: string option
-  ; kind: 'a } (* None for directories. *)
+  ; basename: string option (* None for directories. *)
+  ; kind: 'a }
 
 val current: unit -> abs t
 
@@ -23,6 +23,4 @@ val rel_of_abs: ?in_:abs t -> abs t -> rel t
 (* [ t ^/ path] = [abs_of_rel ~in_:t (of_rel path)] *)
 val (^/): abs t -> string -> abs t
 
-(*
-module Map : Map.S with type key := t
-*)
+module Make_map(Kind: sig type t end): Map.S with type key = Kind.t t

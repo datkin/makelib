@@ -1,6 +1,6 @@
 open Util
 
-(* TODO: ALL OF THIS WILL BLOW UP IF THERE ARE /s IN YOUR PATH. *)
+(* TODO: ALL OF THIS WILL BLOW UP IF THERE ARE /s IN YOUR FILE NAMES. *)
 
 (* Phantom types *)
 type abs = [ `Absolute ];;
@@ -21,9 +21,8 @@ exception Empty_path of string;;
 let basename t = t.basename;;
 
 (* We assume dir has already been processed to determine if it's a relative or
- * absolute path. Therefore, it's safe to remove any "" segments. If it's an
- * absolute path, all ".." should be removed. If it's a relative path, we can
- * remove them in the middle. *)
+ * absolute path. Therefore, it's safe to remove any "" segments. Treat "x/.."
+ * as a redex. If it's an absolute path, all leading ".."s can be dropped. *)
 let normalize kind dir =
   let rec eval dir acc =
     match dir, acc with
@@ -48,7 +47,8 @@ let normalize kind dir =
 ;;
 
 let of_string path: either t =
-  (* Ensure '.', '..', '/..', and '/.' are handled correctly. *)
+  (* Ensure '.', '..', '/..', and '/.' are treated as directories, not
+   * filenames by adding a '/' on the end. *)
   let path =
     if List.exists ["/."; "/.."] ~f:(fun suffix -> String.is_suffix path ~suffix)
        || List.mem path ~set:["."; ".."]
@@ -159,6 +159,11 @@ let (^/) root path =
   abs_of_rel ~in_:root (of_rel path)
 ;;
 
-(*
-module Map = Map.Make(String);;
-*)
+type 'a path = 'a t
+
+module Make_map(Kind: sig type t end) = struct
+  include Map.Make(struct
+    type t = Kind.t path
+    let compare (a: Kind.t path) b = compare a b
+  end)
+end
