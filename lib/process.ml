@@ -1,3 +1,5 @@
+open Util
+
 type t =
   { stdout: string list
   ; stderr: string list
@@ -20,8 +22,8 @@ let run ?env prog args =
   let env =
     match env with
     | Some env ->
-      Array.of_list (List.map (fun (key, value) ->
-        Printf.sprintf "%s=%s" key value) env)
+      Array.of_list (List.map env ~f:(fun (key, value) ->
+        Printf.sprintf "%s=%s" key value))
     | None -> Unix.environment ()
   in
   let args = Array.of_list (prog :: args) in
@@ -29,14 +31,16 @@ let run ?env prog args =
   let stdout_r, stdout_w = Unix.pipe () in
   let stderr_r, stderr_w = Unix.pipe () in
   let pid =
-    UnixLabels.create_process_env ~prog ~args ~env
+    Unix.create_process_env ~prog ~args ~env
       ~stdin:stdin_r ~stdout:stdout_w ~stderr:stderr_w
   in
+  (* TODO: Set close on exec *)
   Unix.close stdin_r;
   Unix.close stdout_w;
   Unix.close stderr_w;
+  (* TODO: Better IO processing *)
   let stdout = lines (Unix.in_channel_of_descr stdout_r) in
   let stderr = lines (Unix.in_channel_of_descr stderr_r) in
-  let _pid, status = UnixLabels.waitpid ~mode:[] pid in
+  let _pid, status = Unix.waitpid ~mode:[] pid in
   { stdout; stderr; status }
 ;;
