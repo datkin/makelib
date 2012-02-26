@@ -58,6 +58,12 @@ module List = struct
         []
     in
     build 0
+
+  let rec last t =
+    match t with
+    | [] -> None
+    | [x] -> Some x
+    | _ :: xs -> last xs
 end
 
 module Unix = struct

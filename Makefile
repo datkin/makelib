@@ -1,4 +1,8 @@
 OCAMLC=ocamlc
+MKTOP=ocamlmktop
+
+# The -warn-error flag only applies to warnings that are enabled.
+OCAML_FLAGS=-w +A -warn-error +A
 
 LIBS=unix.cma
 
@@ -12,6 +16,8 @@ LIBS=unix.cma
 
 lib/process.cmo: lib/util.cmo
 
+lib/path.cmo: lib/util.cmo
+
 lib/module.cmi: lib/path.cmi
 lib/module.cmo: lib/util.cmo lib/path.cmo
 
@@ -19,10 +25,14 @@ lib/ocamldep.cmi: lib/module.cmi
 lib/ocamldep.cmo: lib/process.cmo lib/module.cmo
 
 %.cmi: %.mli
-	$(OCAMLC) -I lib -c $*.mli
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.mli
 
 %.cmo: %.ml %.cmi
-	$(OCAMLC) -I lib -c $*.ml
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.ml
+
+top: lib/path.cmo
+	$(MKTOP) -o lib/toplevel $(LIBS) lib/util.cmo lib/path.cmo
+	echo "Remember #directory "lib""
 
 clean:
 	rm lib/*.cmi

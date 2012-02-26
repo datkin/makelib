@@ -1,75 +1,127 @@
 open Util
 
-(* Absolute paths only! *)
-type t = string;;
+(* TODO: ALL OF THIS WILL BLOW UP IF THERE ARE /s IN YOUR PATH. *)
 
-exception Non_absolute_path of string;;
-exception Non_relative_path of string;;
+(* Phantom types *)
+type abs = [ `Absolute ];;
+type rel = [ `Relative ];;
+(* type either = [ #abs | #rel ];; *)
+type either = [ `Absolute | `Relative ];;
 
-let is_absolute path = String.is_prefix ~prefix:"/" path;;
-let is_relative path = Filename.is_relative path;;
-
-(* Maybe this should just be the internal representation? *)
-let segments t =
-  match String.split t ~on:'/' with
-  | "" :: segments -> segments
-  | _ -> raise (Non_absolute_path t)
+type 'a t =
+  { dir: string list
+  ; basename: string option
+  ; kind: 'a }
 ;;
 
-let of_abs path =
-  if is_absolute path then
-    (path: t)
-  else
-    raise (Non_absolute_path path)
-;;
+exception Non_absolute_path of rel t;;
+exception Non_relative_path of abs t;;
+exception Empty_path of string;;
 
-let to_abs t = (t: string);;
+let basename t = t.basename;;
 
-let current () = of_abs (Unix.getcwd ()) ;;
-
-(* Evaluate a path with '.' and '..' *)
-let eval segments =
-  let rec eval rev_segments segments =
-    match rev_segments with
-    | []
-    | ".." :: [] -> segments
-    | ".." :: _ :: reg_segments -> eval rev_segments segments
-    | "." :: rev_segments -> eval rev_segments segments
-    | segment ::      rev_segents -> eval rev_segments (segment :: segments)
+(* We assume dir has already been processed to determine if it's a relative or
+ * absolute path. Therefore, it's safe to remove any "" segments. If it's an
+ * absolute path, all ".." should be removed. If it's a relative path, we can
+ * remove them in the middle. *)
+let normalize kind dir =
+  let rec eval dir acc =
+    match dir with
+    | ".." :: ".." :: dir ->
+      if kind = `Absolute then
+        eval dir acc
+      else
+        eval (".." :: dir) (".." :: acc)
+    | _ :: ".." :: dir ->
+      eval dir acc
+    | ".." :: dir ->
+      if kind = `Absolute then
+        eval dir acc
+      else
+        eval dir (".." :: acc)
+        (* consider: ../../../foo -> .. ../../foo -> ../.. ../foo ->  *)
+    | segment :: dir -> eval dir (segment :: acc)
+    | [] -> acc
   in
-  let segments = eval (List.rev segments) [] in
-  ("/" ^ String.concat segments ~sep:"/")
+  let dir = List.filter dir ~f:((=) ".") in
+  let dir = List.filter dir ~f:((=) "") in
+  List.rev (eval dir [])
 ;;
 
-(* Fully evaluate a relative path. *)
-let of_rel ?in_:root path =
-  if is_relative path then begin
-    let root =
-      match root with
-      | Some root -> root
-      | None -> current ()
+let of_string path: either t =
+  match String.rsplit2 path ~on:'/' with
+  | Some (dir, basename) ->
+    let basename =
+      match basename with
+      | "" -> None
+      | x -> Some x
     in
-    let root_segments = String.split root ~on:'/' in
-    let path_segments = String.split path ~on:'/' in
-    eval (root_segments @ path_segments)
-  end else
-    raise (Non_relative_path path)
+    let kind, dir =
+      match String.split dir ~on:'/' with
+      | "" :: dir -> `Absolute, dir
+      | dir -> `Relative, dir
+    in
+    let dir = normalize kind dir in
+    { dir; basename; kind }
+  | None ->
+    (* The path has no slash, so it must be relative. *)
+    if String.is_empty path then
+      raise (Empty_path path)
+    else
+      { dir = []; basename = Some path; kind = `Relative }
 ;;
 
-(*
-path to: /home/datkin/foo/bar
-in: /home/datkin/x/
-is: ../foo/bar
+let of_abs path: abs t =
+  let t = of_string path in
+  match t.kind with
+  | `Absolute -> {t with kind = `Absolute}
+  | `Relative -> raise (Non_absolute_path {t with kind = `Relative})
+;;
 
-/home/datkin/x
-relative to
-/home/datkin/foo/bar/
-is
-../../x
+let of_rel path: rel t =
+  let t = of_string path in
+  match t.kind with
+  | `Relative -> {t with kind = `Relative}
+  | `Absolute -> raise (Non_relative_path {t with kind = `Absolute})
+;;
 
-strip the common prefix, then add a double dot for each bit "to" is longer than
-"in"
-*)
+let to_abs t =
+  match t.dir, t.basename with
+  | [], None -> "/"
+  | dir, basename ->
+    let dir = "/" ^ String.concat dir ~sep:"/" ^ "/" in
+    match basename with
+    | Some basename -> dir ^ basename
+    | None -> dir
+;;
+
+let to_rel t =
+  match t.dir, t.basename with
+  | [], None -> "."
+  | dir, basename ->
+    let dir = String.concat dir ~sep:"/" ^ "/" in
+    match basename with
+    | Some basename -> dir ^ basename
+    | None -> dir
+;;
+
+let current () =
+  of_abs (Unix.getcwd () ^ "/")
+;;
+
+let current_unless path_opt =
+  match path_opt with
+  | Some path -> path
+  | None -> current ()
+;;
+
+let abs_of_rel ?in_:root path =
+  let root = current_unless root in
+  let kind = `Absolute in
+  let dir = normalize kind (root.dir @ path.dir) in
+  { dir = dir; basename = path.basename; kind = kind }
+;;
+
 let rec drop_shared_prefix a_segments b_segments =
   match a_segments, b_segments with
   | x :: a_segments
@@ -77,21 +129,29 @@ let rec drop_shared_prefix a_segments b_segments =
   | a_segments, b_segments -> a_segments, b_segments
 ;;
 
-let to_rel ?in_:root t =
-  let root =
-    match root with
-    | Some root -> root
-    | None -> current ()
-  in
-  let root_suffix, t_suffix = drop_shared_prefix (segments root) (segments t) in
-  (* How much longer is the t-suffix than the root suffix? *)
-  let double_dots = abs ((List.length root_suffix) - (List.length t_suffix)) in
-  let double_dots = List.init double_dots ~f:(const "..") in
-  String.concat (double_dots @ t_suffix) ~sep:"/"
+(* Examples:
+ * root                 | target               | rel
+ * ---------------------+----------------------+-------
+ * /home/datkin         | /home/datkin/x       | x
+ * /home/datkin/x       | /home/datkin         | ../
+ * /home/datkin/foo/bar | /home/datkin/x       | ../../x
+ * /home/datkin/x       | /home/datkin/foo/bar | ../foo/bar
+ * /home/datkin/x       | /root                | ../../root
+ * /root                | /home/datkin/x       | ../home/datkin/x
+ *
+ * Hmm, question: do we assume the "in" is always a directory?
+ *)
+let rel_of_abs ?in_:root t =
+  let root = current_unless root in
+  let root_suffix, t_suffix = drop_shared_prefix root.dir t.dir in
+  let double_dots = List.init (List.length root_suffix) ~f:(const "..") in
+  { dir = double_dots @ t_suffix; basename = t.basename; kind = `Relative }
 ;;
 
 let (^/) root path =
-  of_rel path ~in_:root
+  abs_of_rel ~in_:root (of_rel path)
 ;;
 
+(*
 module Map = Map.Make(String);;
+*)

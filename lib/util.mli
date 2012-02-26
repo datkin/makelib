@@ -26,6 +26,8 @@ module List : sig
   include module type of ListLabels
 
   val init: int -> f:(int -> 'a) -> 'a t
+
+  val last: 'a t -> 'a option
 end
 
 module Unix : sig
