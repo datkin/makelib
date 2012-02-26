@@ -9,7 +9,9 @@ module String = struct
 
   let is_suffix str ~suffix =
     try
-      let actual_suffix = sub str ~pos:0 ~len:(length suffix) in
+      let actual_suffix =
+        sub str ~pos:(length str - length suffix) ~len:(length suffix)
+      in
       actual_suffix = suffix
     with Invalid_argument _ -> false
 
