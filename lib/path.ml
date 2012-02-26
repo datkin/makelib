@@ -26,29 +26,35 @@ let basename t = t.basename;;
  * remove them in the middle. *)
 let normalize kind dir =
   let rec eval dir acc =
-    match dir with
-    | ".." :: ".." :: dir ->
+    match dir, acc with
+    | ".." :: dir, ".." :: acc ->
       if kind = `Absolute then
-        eval dir acc
+        eval dir acc (* should never happend *)
       else
-        eval (".." :: dir) (".." :: acc)
-    | _ :: ".." :: dir ->
+        eval dir (".." :: ".." :: acc)
+    | ".." :: dir, _ :: acc ->
       eval dir acc
-    | ".." :: dir ->
+    | ".." :: dir, [] ->
       if kind = `Absolute then
         eval dir acc
       else
         eval dir (".." :: acc)
-        (* consider: ../../../foo -> .. ../../foo -> ../.. ../foo ->  *)
-    | segment :: dir -> eval dir (segment :: acc)
-    | [] -> acc
+    | segment :: dir, acc -> eval dir (segment :: acc)
+    | [], _ -> acc
   in
-  let dir = List.filter dir ~f:((=) ".") in
-  let dir = List.filter dir ~f:((=) "") in
+  let dir = List.filter dir ~f:((<>) ".") in
+  let dir = List.filter dir ~f:((<>) "") in
   List.rev (eval dir [])
 ;;
 
 let of_string path: either t =
+  (* Ensure '.', '..', '/..', and '/.' are handled correctly. *)
+  let path =
+    if List.exists ["/."; "/.."] ~f:(fun suffix -> String.is_suffix path ~suffix)
+       || List.mem path ~set:["."; ".."]
+    then path ^ "/"
+    else path
+  in
   match String.rsplit2 path ~on:'/' with
   | Some (dir, basename) ->
     let basename =
@@ -98,6 +104,7 @@ let to_abs t =
 let to_rel t =
   match t.dir, t.basename with
   | [], None -> "."
+  | [], Some basename -> basename
   | dir, basename ->
     let dir = String.concat dir ~sep:"/" ^ "/" in
     match basename with
@@ -130,16 +137,16 @@ let rec drop_shared_prefix a_segments b_segments =
 ;;
 
 (* Examples:
- * root                 | target               | rel
- * ---------------------+----------------------+-------
- * /home/datkin         | /home/datkin/x       | x
- * /home/datkin/x       | /home/datkin         | ../
- * /home/datkin/foo/bar | /home/datkin/x       | ../../x
- * /home/datkin/x       | /home/datkin/foo/bar | ../foo/bar
- * /home/datkin/x       | /root                | ../../root
- * /root                | /home/datkin/x       | ../home/datkin/x
- *
- * Hmm, question: do we assume the "in" is always a directory?
+ * root                  | target               | rel
+ * ----------------------+----------------------+-----------------
+ * /home/datkin/         | /home/datkin/x       | x
+ * /home/foo/            | /home/datkin/x       | ../datkin/x
+ * /home/foo             | /home/datkin/x       | datkin/x
+ * /home/datkin/x/       | /home/datkin         | ../
+ * /home/datkin/foo/bar/ | /home/datkin/x       | ../../x
+ * /home/datkin/x/       | /home/datkin/foo/bar | ../foo/bar
+ * /home/datkin/x/       | /root                | ../../root
+ * /root/                | /home/datkin/x       | ../home/datkin/x
  *)
 let rel_of_abs ?in_:root t =
   let root = current_unless root in
