@@ -2,18 +2,18 @@ OCAMLC=ocamlc
 
 LIBS=unix.cma
 
-BUILD_DIR=.build
+# See: http://owen.sj.ca.us/~rk/howto/slides/make/slides/makesuff.html
+#.SUFFIXES:
+#.SUFFIXES: .mli .cmi .ml .cmo
 
-$(BUILD_DIR):
-	mkdir $(BUILD_DIR)
+.PHONY: clean
 
-# See http://owen.sj.ca.us/~rk/howto/slides/make/slides/makesuff.html
-.SUFFIXES:
-.SUFFIXES: .mli .cmi .ml .cmo
+%.cmi: %.mli
+	$(OCAMLC) -I lib -c $*.mli
 
-.mli.cmi:
-#	$(OCAMLC) -I $(BUILD_DIR) -c -o $(BUILD_DIR)/$* lib/$*.mli
-	$(OCAMLC) -I $(BUILD_DIR) -c -o $(BUILD_DIR)/`basename $*` $*.mli
+%.cmo: %.ml %.cmi
+	$(OCAMLC) -I lib -c $*.ml
 
-.ml.cmo: $*.cmi
-	$(OCAMLC) -I $(BUILD_DIR) -c -o $(BUILD_DIR)/$* $*.ml
+clean:
+	rm lib/*.cmi
+	rm lib/*.cmo

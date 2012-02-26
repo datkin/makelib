@@ -1,16 +1,27 @@
-(* TODO: Move this into a util module so the module name [String] isn't
- * ambiguous? *)
+module String : sig
+  type t = string
 
-include StringLabels
+  val concat: sep:t -> t list -> t
 
-type t = string
+  val length: t -> int
 
-val is_prefix: t -> prefix:t -> bool
+  val is_prefix: t -> prefix:t -> bool
 
-val is_suffix: t -> suffix:t -> bool
+  val is_suffix: t -> suffix:t -> bool
 
-val split: t -> on:char -> t list
+  val split: t -> on:char -> t list
 
-val lsplit2: t -> on:char -> (t * t) option
+  val lsplit2: t -> on:char -> (t * t) option
 
-val rsplit2: t -> on:char -> (t * t) option
+  val rsplit2: t -> on:char -> (t * t) option
+end
+
+module List : sig
+  include module type of ListLabels
+end
+
+module Unix : sig
+  include module type of UnixLabels
+end
+
+val failwithf : ('a, unit, string, unit -> 'b) format4 -> 'a
