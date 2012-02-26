@@ -1,3 +1,3 @@
-val dependencies: ?exe:string -> File.t -> Module.t list
+val dependencies: ?exe:string -> Path.t -> Module.t list
 
-val dependency_map: ?exe:string -> File.t list -> Module.t File.Map.t
+val dependency_map: ?exe:string -> Path.t list -> Module.t Path.Map.t

@@ -31,19 +31,33 @@ module String = struct
     let right = sub str ~pos:(split_idx+1) ~len:(length str - split_idx - 1) in
     left, right
 
-  let rsplit2 str ~on:split_char =
+  let rsplit2 t ~on:split_char =
     try
-      Some (split2 (rindex str split_char) str)
+      Some (split2 (rindex t split_char) t)
     with _ -> None
 
-  let lsplit2 str ~on:split_char =
+  let lsplit2 t ~on:split_char =
     try
-      Some (split2 (index str split_char) str)
+      Some (split2 (index t split_char) t)
     with _ -> None
+
+  let is_empty t =
+    length t = 0
 end
 
 module List = struct
   include ListLabels
+
+  type 'a t = 'a list
+
+  let init n ~f =
+    let rec build m =
+      if m < n then
+        (f n) :: build (m+1)
+      else
+        []
+    in
+    build 0
 end
 
 module Unix = struct
@@ -51,3 +65,5 @@ module Unix = struct
 end
 
 let failwithf fmt = Printf.ksprintf (fun s () -> failwith s) fmt;;
+
+let const a _ = a;;

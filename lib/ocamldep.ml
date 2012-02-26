@@ -18,11 +18,11 @@ let parse_line line =
 
 let dependencies ?exe file =
   let exe = default_or exe in
-  let file_name = File.absolute_path file in
-  let process = Process.run exe ["-modules"; file_name] in
-  process
+  let file_name = Path.to_abs file in
+  let _process = Process.run exe ["-modules"; file_name] in
+  []
 ;;
 
-let dependecy_map files =
-  Map.File.empty
+let dependency_map ?exe files =
+  Path.Map.empty
 ;;
