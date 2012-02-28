@@ -30,8 +30,8 @@ lib/ocamldep.cmo: lib/process.cmo lib/module.cmo
 %.cmo: %.ml %.cmi
 	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.ml
 
-top: lib/path.cmo
-	$(MKTOP) -o lib/toplevel $(LIBS) lib/util.cmo lib/path.cmo
+top: lib/ocamldep.cmo
+	$(MKTOP) -o lib/toplevel $(LIBS) lib/util.cmo lib/path.cmo lib/module.cmo lib/process.cmo lib/ocamldep.cmo
 	echo "Remember #directory "lib""
 
 clean:

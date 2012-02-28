@@ -6,11 +6,14 @@ type t =
   ; status: Unix.process_status }
 ;;
 
+let stdout t = t.stdout;;
+let stderr t = t.stderr;;
+let status t = t.status;;
+
 let lines channel =
   let rec collect lines =
     try
       let line = input_line channel in
-      Printf.printf "got line: %s\n%!" line;
       collect (line :: lines)
     with End_of_file ->
       close_in channel; lines

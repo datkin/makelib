@@ -6,6 +6,7 @@ module T : sig
   type 'a t
 end
 
+type 'a t = 'a T.t
 open T
 
 module Abs : sig
