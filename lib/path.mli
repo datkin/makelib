@@ -1,6 +1,7 @@
 module T : sig
   type abs
   type rel
+  type either
 
   type 'a t
 end
@@ -16,8 +17,6 @@ module Abs : sig
   val current: unit -> t
 
   val to_relative: ?of_:t -> t -> rel T.t
-
-  module Map : Map.S with type key := t
 end
 
 module Rel : sig
@@ -36,3 +35,7 @@ val basename: 'a t -> string option
 
 (* [ t ^/ path] = [abs_of_rel ~in_:t (of_rel path)] *)
 val (^/): abs t -> string -> abs t
+
+val of_string: string -> either t
+
+val to_string: 'a t -> string

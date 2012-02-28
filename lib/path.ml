@@ -3,15 +3,14 @@ open Util
 (* TODO: ALL OF THIS WILL BLOW UP IF THERE ARE /s IN YOUR FILE NAMES. *)
 
 module T = struct
-  type abs = [ `Absolute ]
-  type rel = [ `Relative ]
-  (* type either = [ #abs | #rel ];; *)
-  type either = [ `Absolute | `Relative ]
+  type abs = unit
+  type rel = unit
+  type either = unit
 
   type 'a t =
     { dir: string list
     ; basename: string option
-    ; kind: 'a }
+    ; kind: [ `Absolute | `Relative ] }
 end
 
 include T
@@ -82,7 +81,8 @@ let of_string path: either t =
 module Abs = struct
   type t = abs T.t
 
-  let of_string path =
+  (* Enforce the constraint that only `Absolute paths can have type Abs.t *)
+  let of_string path: t =
     let t = of_string path in
     match t.kind with
     | `Absolute -> {t with kind = `Absolute}
@@ -91,6 +91,7 @@ module Abs = struct
   let to_string t =
     match t.dir, t.basename with
     | [], None -> "/"
+    | [], Some basename -> "/" ^ basename
     | dir, basename ->
       let dir = "/" ^ String.concat dir ~sep:"/" ^ "/" in
       match basename with
@@ -138,6 +139,7 @@ end
 module Rel = struct
   type t = rel T.t
 
+  (* Enforce the constraint that only `Relative paths can have type Abs.t *)
   let of_string path =
     let t = of_string path in
     match t.kind with
@@ -168,4 +170,10 @@ end
 
 let (^/) root path =
   Rel.to_absolute ~of_:root (Rel.of_string path)
+;;
+
+let to_string t =
+  match t.kind with
+  | `Absolute -> Abs.to_string t
+  | `Relative -> Rel.to_string t
 ;;
