@@ -34,6 +34,7 @@ let run ?env prog args =
     Unix.create_process_env ~prog ~args ~env
       ~stdin:stdin_r ~stdout:stdout_w ~stderr:stderr_w
   in
+  Unix.close stdin_w;
   (* TODO: Set close on exec *)
   Unix.close stdin_r;
   Unix.close stdout_w;

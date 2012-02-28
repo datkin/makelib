@@ -2,21 +2,23 @@ open Util
 
 (* TODO: ALL OF THIS WILL BLOW UP IF THERE ARE /s IN YOUR FILE NAMES. *)
 
-(* Phantom types *)
-type abs = [ `Absolute ];;
-type rel = [ `Relative ];;
-(* type either = [ #abs | #rel ];; *)
-type either = [ `Absolute | `Relative ];;
+module T = struct
+  type abs = [ `Absolute ]
+  type rel = [ `Relative ]
+  (* type either = [ #abs | #rel ];; *)
+  type either = [ `Absolute | `Relative ]
 
-type 'a t =
-  { dir: string list
-  ; basename: string option
-  ; kind: 'a }
-;;
+  type 'a t =
+    { dir: string list
+    ; basename: string option
+    ; kind: 'a }
+end
 
-exception Non_absolute_path of rel t;;
-exception Non_relative_path of abs t;;
-exception Empty_path of string;;
+include T
+
+exception Non_absolute_path of rel t
+exception Non_relative_path of abs t
+exception Empty_path of string
 
 let basename t = t.basename;;
 
@@ -77,93 +79,93 @@ let of_string path: either t =
       { dir = []; basename = Some path; kind = `Relative }
 ;;
 
-let of_abs path: abs t =
-  let t = of_string path in
-  match t.kind with
-  | `Absolute -> {t with kind = `Absolute}
-  | `Relative -> raise (Non_absolute_path {t with kind = `Relative})
-;;
+module Abs = struct
+  type t = abs T.t
 
-let of_rel path: rel t =
-  let t = of_string path in
-  match t.kind with
-  | `Relative -> {t with kind = `Relative}
-  | `Absolute -> raise (Non_relative_path {t with kind = `Absolute})
-;;
+  let of_string path =
+    let t = of_string path in
+    match t.kind with
+    | `Absolute -> {t with kind = `Absolute}
+    | `Relative -> raise (Non_absolute_path {t with kind = `Relative})
 
-let to_abs t =
-  match t.dir, t.basename with
-  | [], None -> "/"
-  | dir, basename ->
-    let dir = "/" ^ String.concat dir ~sep:"/" ^ "/" in
-    match basename with
-    | Some basename -> dir ^ basename
-    | None -> dir
-;;
+  let to_string t =
+    match t.dir, t.basename with
+    | [], None -> "/"
+    | dir, basename ->
+      let dir = "/" ^ String.concat dir ~sep:"/" ^ "/" in
+      match basename with
+      | Some basename -> dir ^ basename
+      | None -> dir
 
-let to_rel t =
-  match t.dir, t.basename with
-  | [], None -> "."
-  | [], Some basename -> basename
-  | dir, basename ->
-    let dir = String.concat dir ~sep:"/" ^ "/" in
-    match basename with
-    | Some basename -> dir ^ basename
-    | None -> dir
-;;
+  let current () =
+    of_string (Unix.getcwd () ^ "/")
 
-let current () =
-  of_abs (Unix.getcwd () ^ "/")
-;;
+  let current_unless path_opt =
+    match path_opt with
+    | Some path -> path
+    | None -> current ()
 
-let current_unless path_opt =
-  match path_opt with
-  | Some path -> path
-  | None -> current ()
-;;
+  let rec drop_shared_prefix a_segments b_segments =
+    match a_segments, b_segments with
+    | x :: a_segments
+    , y :: b_segments when x = y -> drop_shared_prefix a_segments b_segments
+    | a_segments, b_segments -> a_segments, b_segments
 
-let abs_of_rel ?in_:root path =
-  let root = current_unless root in
-  let kind = `Absolute in
-  let dir = normalize kind (root.dir @ path.dir) in
-  { dir = dir; basename = path.basename; kind = kind }
-;;
+  (* Examples:
+   * root                  | target               | rel
+   * ----------------------+----------------------+-----------------
+   * /home/datkin/         | /home/datkin/x       | x
+   * /home/foo/            | /home/datkin/x       | ../datkin/x
+   * /home/foo             | /home/datkin/x       | datkin/x
+   * /home/datkin/x/       | /home/datkin         | ../
+   * /home/datkin/foo/bar/ | /home/datkin/x       | ../../x
+   * /home/datkin/x/       | /home/datkin/foo/bar | ../foo/bar
+   * /home/datkin/x/       | /root                | ../../root
+   * /root/                | /home/datkin/x       | ../home/datkin/x
+   *)
+  let to_relative ?of_:root t =
+    let root = current_unless root in
+    let root_suffix, t_suffix = drop_shared_prefix root.dir t.dir in
+    let double_dots = List.init (List.length root_suffix) ~f:(const "..") in
+    { dir = double_dots @ t_suffix; basename = t.basename; kind = `Relative }
 
-let rec drop_shared_prefix a_segments b_segments =
-  match a_segments, b_segments with
-  | x :: a_segments
-  , y :: b_segments when x = y -> drop_shared_prefix a_segments b_segments
-  | a_segments, b_segments -> a_segments, b_segments
-;;
-
-(* Examples:
- * root                  | target               | rel
- * ----------------------+----------------------+-----------------
- * /home/datkin/         | /home/datkin/x       | x
- * /home/foo/            | /home/datkin/x       | ../datkin/x
- * /home/foo             | /home/datkin/x       | datkin/x
- * /home/datkin/x/       | /home/datkin         | ../
- * /home/datkin/foo/bar/ | /home/datkin/x       | ../../x
- * /home/datkin/x/       | /home/datkin/foo/bar | ../foo/bar
- * /home/datkin/x/       | /root                | ../../root
- * /root/                | /home/datkin/x       | ../home/datkin/x
- *)
-let rel_of_abs ?in_:root t =
-  let root = current_unless root in
-  let root_suffix, t_suffix = drop_shared_prefix root.dir t.dir in
-  let double_dots = List.init (List.length root_suffix) ~f:(const "..") in
-  { dir = double_dots @ t_suffix; basename = t.basename; kind = `Relative }
-;;
-
-let (^/) root path =
-  abs_of_rel ~in_:root (of_rel path)
-;;
-
-type 'a path = 'a t
-
-module Make_map(Kind: sig type t end) = struct
-  include Map.Make(struct
-    type t = Kind.t path
-    let compare (a: Kind.t path) b = compare a b
+  module Map = Map.Make(struct
+    type t = abs T.t
+    let compare (a: t) b = compare a b
   end)
 end
+
+module Rel = struct
+  type t = rel T.t
+
+  let of_string path =
+    let t = of_string path in
+    match t.kind with
+    | `Relative -> {t with kind = `Relative}
+    | `Absolute -> raise (Non_relative_path {t with kind = `Absolute})
+
+  let to_string t =
+    match t.dir, t.basename with
+    | [], None -> "."
+    | [], Some basename -> basename
+    | dir, basename ->
+      let dir = String.concat dir ~sep:"/" ^ "/" in
+      match basename with
+      | Some basename -> dir ^ basename
+      | None -> dir
+
+  let to_absolute ?of_:root t =
+    let root = Abs.current_unless root in
+    let kind = `Absolute in
+    let dir = normalize kind (root.dir @ t.dir) in
+    { dir = dir; basename = t.basename; kind = kind }
+
+  module Map = Map.Make(struct
+    type t = rel T.t
+    let compare (a: t) b = compare a b
+  end)
+end
+
+let (^/) root path =
+  Rel.to_absolute ~of_:root (Rel.of_string path)
+;;

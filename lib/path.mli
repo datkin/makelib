@@ -1,26 +1,38 @@
-type abs
-type rel
+module T : sig
+  type abs
+  type rel
 
-type 'a t = private
-  { dir: string list
-  ; basename: string option (* None for directories. *)
-  ; kind: 'a }
+  type 'a t
+end
 
-val current: unit -> abs t
+open T
 
+module Abs : sig
+  type t = abs T.t
+
+  val of_string: string -> t
+  val to_string: t -> string
+
+  val current: unit -> t
+
+  val to_relative: ?of_:t -> t -> rel T.t
+
+  module Map : Map.S with type key := t
+end
+
+module Rel : sig
+  type t = rel T.t
+
+  val of_string: string -> t
+  val to_string: t -> string
+
+  val to_absolute: ?of_:abs T.t -> t -> abs T.t
+
+  module Map : Map.S with type key := t
+end
+
+(* None for directories. *)
 val basename: 'a t -> string option
-
-(* Paths ending with a / are assumed to be directories. *)
-val of_abs: string -> abs t
-val to_abs: abs t -> string
-
-val of_rel: string -> rel t
-val to_rel: rel t -> string
-
-val abs_of_rel: ?in_:abs t -> rel t -> abs t
-val rel_of_abs: ?in_:abs t -> abs t -> rel t
 
 (* [ t ^/ path] = [abs_of_rel ~in_:t (of_rel path)] *)
 val (^/): abs t -> string -> abs t
-
-module Make_map(Kind: sig type t end): Map.S with type key = Kind.t t
