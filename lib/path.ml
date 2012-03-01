@@ -94,6 +94,13 @@ module Dir = struct
   let to_path t =
     { T.dir = t.dir; file = None; kind = t.kind }
 
+  let to_string t =
+    match t.kind, t.dir with
+    | `Relative, [] -> "."
+    | `Relative, segments -> String.concat segments ~sep:"/" ^ "/"
+    | `Absolute, [] -> "/"
+    | `Absolute, segments -> "/" ^ String.concat segments ~sep:"/" ^ "/"
+
   exception Non_absolute_dir of rel t
   exception Non_relative_dir of abs t
 end

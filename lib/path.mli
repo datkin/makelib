@@ -12,6 +12,7 @@ open T
 module Dir : sig
   type 'a t
   val of_string: string -> either t
+  val to_string: 'a t -> string
 
   val to_path: 'a t -> 'a T.t
 end
