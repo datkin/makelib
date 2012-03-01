@@ -9,15 +9,29 @@ end
 type 'a t = 'a T.t
 open T
 
+module Dir : sig
+  type 'a t
+  val of_string: string -> either t
+
+  val to_path: 'a t -> 'a T.t
+end
+
 module Abs : sig
   type t = abs T.t
 
   val of_string: string -> t
   val to_string: t -> string
 
-  val current: unit -> t
+  module Dir : sig
+    type t = abs Dir.t
+    val of_string: string -> t
 
-  val to_relative: ?of_:t -> t -> rel T.t
+    val current: unit -> t
+  end
+
+  val to_relative: ?of_:Dir.t -> t -> rel T.t
+
+  module Map : Map.S with type key = t
 end
 
 module Rel : sig
@@ -26,17 +40,36 @@ module Rel : sig
   val of_string: string -> t
   val to_string: t -> string
 
-  val to_absolute: ?of_:abs T.t -> t -> abs T.t
+  val to_absolute: ?of_:Abs.Dir.t -> t -> Abs.t
 
-  module Map : Map.S with type key := t
+  module Dir : sig
+    type t = rel Dir.t
+    val of_string: string -> t
+  end
+
+  module Map : Map.S with type key = t
 end
 
 (* None for directories. *)
-val basename: 'a t -> string option
+val file: 'a t -> string option
 
-(* [ t ^/ path] = [abs_of_rel ~in_:t (of_rel path)] *)
-val (^/): abs t -> string -> abs t
+val dir: 'a t -> 'a Dir.t
+
+val is_directory: 'a t -> bool
+
+val split: 'a t -> 'a Dir.t * string option
+
+val basename: 'a t -> string
+
+val equal: 'a t -> 'a t -> bool
+
+val compare: 'a t -> 'a t -> int
+
+(* [ t ^/ path] = [Rel.to_absolute ?of:t (Rel.of_string rel)] *)
+val (^/): 'a Dir.t -> string -> 'a t
 
 val of_string: string -> either t
 
 val to_string: 'a t -> string
+
+module Map : Map.S with type key = either T.t
