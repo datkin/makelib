@@ -26,12 +26,10 @@ module type S = sig
 
   val filter_nodes: t -> f:(node -> bool) -> t
   val filter_edges: t -> f:(edge -> bool) -> t
-  (* filter: ... -> (edge list * t) *)
 
-  (* ??? *)
   val map: t -> f:(edge -> edge list) -> t
 
-  val topological_order: t -> node list
+  val topological_order: t -> node list option
 
   val of_list: edge list -> t
 

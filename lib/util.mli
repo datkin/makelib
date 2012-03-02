@@ -32,6 +32,10 @@ module List : sig
   val map: 'a t -> f:('a -> 'b) -> 'b t
 
   val fold: 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
+
+  val dedupe: 'a list -> equal:('a -> 'a -> bool) -> 'a list
+
+  val closure: 'a t -> equal:('a -> 'a -> bool) -> f:('a -> 'a list) -> 'a list
 end
 
 module Unix : sig

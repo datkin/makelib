@@ -70,6 +70,31 @@ module List = struct
   let fold t ~init ~f = fold_left ~f ~init t
 
   let map t ~f = map ~f t
+
+  let remove t x ~equal =
+    filter t ~f:(fun y -> not (equal x y))
+
+  let dedupe t ~equal =
+    let rec dedupe t acc =
+      match t with
+      | [] -> acc
+      | x :: xs -> dedupe (remove xs x ~equal) (x :: acc)
+    in
+    List.rev (dedupe t [])
+
+  let closure seeds ~equal ~f =
+    (* TODO: I guess we could just stop when next is empty? *)
+    let rec grow ~seeds acc =
+      let next = flatten (map seeds ~f) in
+      let acc' = dedupe ~equal (acc @ seeds @ next) in
+      if length acc = length acc' then
+        acc
+      else
+        (* TODO!!!!: mem should use [equal] argument. *)
+        let _old, new_seeds = partition acc' ~f:(mem ~set:acc) in
+        grow ~seeds:new_seeds acc'
+    in
+    grow ~seeds []
 end
 
 module Unix = struct

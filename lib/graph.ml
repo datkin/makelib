@@ -24,10 +24,9 @@ module type S = sig
   val filter_nodes: t -> f:(node -> bool) -> t
   val filter_edges: t -> f:(edge -> bool) -> t
 
-  (* ??? *)
   val map: t -> f:(edge -> edge list) -> t
 
-  val topological_order: t -> node list
+  val topological_order: t -> node list option
 
   val of_list: edge list -> t
 
@@ -80,14 +79,6 @@ end) = struct
     let filter t ~f:keep =
       { in_ = Node_set.filter keep t.in_
       ; out = Node_set.filter keep t.out }
-
-      (*
-    let remove_in t node =
-      { t with in_ = Node_set.remove node t.in_ }
-
-    let remove_out t node =
-      { t with out = Node_set.remove node t.out }
-*)
   end
 
   module Map = Map.Make(Node)
@@ -140,20 +131,6 @@ end) = struct
     let t = add src ~to_:dest ~with_:Edge_info.add_in t in
     t
 
-    (*
-    let src_info =
-      try Map.find src t
-      with Not_found -> Edge_info.empty
-    in
-    let dest_info =
-      try Map.find dest t
-      with Not_found -> Edge_info.empty
-    in
-    let src_info = Edge_info.add_out src_info dest in
-    let dest_info = Edge_info.add_in dest_info src in
-    let map = Map.add src (Node_set.add dest_info nodes) t in
-  *)
-
   let follow t node =
     try
       let info = Map.find node t in
@@ -195,23 +172,32 @@ end) = struct
   let map t ~f =
     of_list (List.flatten (List.map (edges t) ~f))
 
-  let topological_order _t = []
+  (* Is it possible that this might not get all nodes? *)
+  (* BUG: if the graph is disconnected, we'll return the connected components
+   * with no cycles. *)
+  let topological_order t =
+    (* All nodes with no children. *)
+    let leaf_nodes =
+      List.filter (nodes t) ~f:(fun node ->
+        match follow t node with
+        | None | Some [] -> true
+        | Some _ -> false)
+    in
+    let equal x y = compare x y = 0 in
+    match leaf_nodes with
+    | [] -> None
+    | leaves ->
+      let ordered_nodes =
+        List.closure leaves ~equal ~f:(fun node ->
+          match rewind t node with
+          | Some nodes -> nodes
+          | None -> [])
+      in
+      Some ordered_nodes
 
   let dump t node_to_string =
     List.map (Map.bindings t) ~f:(fun (node, edge_info) ->
       (node_to_string node)
       , `In (List.map ~f:node_to_string (Edge_info.in_ edge_info))
       , `Out (List.map ~f:node_to_string (Edge_info.out edge_info)))
-
-    (*
-    let remove node t =
-      let edge_info =
-        try Map.find node t
-        with Not_found -> Edge_info.empty
-      in
-      let srcs = Edge_info.in_ edge_info in
-      let dests = Edge_info.out edge_info in
-      let t = Map.remove node t in
-      let t = Map.add 
-      *)
 end
