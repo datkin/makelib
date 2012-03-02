@@ -28,6 +28,10 @@ module List : sig
   val init: int -> f:(int -> 'a) -> 'a t
 
   val last: 'a t -> 'a option
+
+  val map: 'a t -> f:('a -> 'b) -> 'b t
+
+  val fold: 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
 end
 
 module Unix : sig

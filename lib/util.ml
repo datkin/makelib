@@ -66,6 +66,10 @@ module List = struct
     | [] -> None
     | [x] -> Some x
     | _ :: xs -> last xs
+
+  let fold t ~init ~f = fold_left ~f ~init t
+
+  let map t ~f = map ~f t
 end
 
 module Unix = struct

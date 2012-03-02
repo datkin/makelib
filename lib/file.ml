@@ -17,9 +17,7 @@ let exists path =
 ;;
 
 let list directory =
-  let dir_str = Path.Dir.to_string directory in
-  let (^/) = Path.(^/) in
-  let dir_handle = Unix.opendir dir_str in
+  let dir_handle = Unix.opendir (Path.Dir.to_string directory ) in
   let rec get files =
     try
       let file = Unix.readdir dir_handle in
@@ -31,6 +29,7 @@ let list directory =
   let files = List.filter files ~f:(fun file ->
     not (file = ".") && not (file = ".."))
   in
+  let (^/) = Path.(^/) in
   let paths = List.map files ~f:(fun file ->
     match (Unix.stat file).Unix.st_kind with
     | Unix.S_DIR -> directory ^/ (file ^ "/")
