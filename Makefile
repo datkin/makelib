@@ -1,3 +1,5 @@
+# Useful Make docs: http://www.gnu.org/software/make/manual/make.html
+
 OCAMLC=ocamlc
 MKTOP=ocamlmktop
 
@@ -6,13 +8,26 @@ OCAML_FLAGS=-w +A -warn-error +A
 
 LIBS=unix.cma
 
+# All modules listed in order.
+# Add extensions, with, eg, $(MODULES:=.cmo)
+MODULES = \
+  util \
+  path \
+  file \
+  module \
+  process \
+  ocamldep \
+  graph
+
+OBJS=$(addprefix lib/, $(MODULES:=.cmo))
+
 # See: http://owen.sj.ca.us/~rk/howto/slides/make/slides/makesuff.html
 # Also: http://owen.sj.ca.us/~rk/howto/slides/make/slides/makemacro.html
 
 # Don't delete intermediate files (ie .cmi files)
 .SECONDARY:
 
-.PHONY: clean
+.PHONY: clean test
 
 lib/process.cmo: lib/util.cmo
 
@@ -35,8 +50,11 @@ lib/graph.cmo: lib/util.cmo
 %.cmo: %.ml %.cmi
 	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.ml
 
-top: lib/file.cmo lib/graph.cmo lib/ocamldep.cmo
-	$(MKTOP) -o lib/toplevel $(LIBS) lib/util.cmo lib/path.cmo lib/file.cmo lib/module.cmo lib/process.cmo lib/graph.cmo lib/ocamldep.cmo
+test: $(OBJS)
+	$(OCAMLC) $(OCAML_FLAGS) -I lib unix.cma lib/util.cmo test/test.ml
+
+top: $(OBJS)
+	$(MKTOP) -o lib/toplevel $(LIBS) $(OBJS)
 	echo "Remember #directory "lib""
 
 clean:
