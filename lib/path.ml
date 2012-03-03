@@ -50,7 +50,7 @@ let of_string path: either t =
    * filenames by adding a '/' on the end. *)
   let path =
     if List.exists ["/."; "/.."] ~f:(fun suffix -> String.is_suffix path ~suffix)
-       || List.mem path ~set:["."; ".."]
+       || List.mem ["."; ".."] ~equal:(=) path
     then path ^ "/"
     else path
   in
@@ -252,6 +252,9 @@ let to_string t =
 let basename path =
   Filename.basename (to_string path)
 ;;
+
+let pp formatter t =
+  String.pp formatter (to_string t)
 
 module Map = Map.Make(struct
   type t = either T.t

@@ -73,4 +73,6 @@ val of_string: string -> either t
 
 val to_string: 'a t -> string
 
+val pp: Format.formatter -> 'a t -> unit
+
 module Map : Map.S with type key = either T.t

@@ -45,6 +45,8 @@ module String = struct
 
   let is_empty t =
     length t = 0
+
+  let pp formatter t = Format.fprintf formatter "%s" t
 end
 
 module List = struct
@@ -61,6 +63,11 @@ module List = struct
     in
     build 0
 
+  let is_empty t =
+    match t with
+    | [] -> true
+    | _ :: _ -> false
+
   let rec last t =
     match t with
     | [] -> None
@@ -70,6 +77,11 @@ module List = struct
   let fold t ~init ~f = fold_left ~f ~init t
 
   let map t ~f = map ~f t
+
+  let rec mem t ~equal x =
+    match t with
+    | [] -> false
+    | h :: t -> equal x h || mem t ~equal x
 
   let remove t x ~equal =
     filter t ~f:(fun y -> not (equal x y))
@@ -83,18 +95,29 @@ module List = struct
     List.rev (dedupe t [])
 
   let closure seeds ~equal ~f =
-    (* TODO: I guess we could just stop when next is empty? *)
-    let rec grow ~seeds acc =
-      let next = flatten (map seeds ~f) in
-      let acc' = dedupe ~equal (acc @ seeds @ next) in
-      if length acc = length acc' then
-        acc
+    let rec grow ~new_elts old_elts =
+      let current_elts = dedupe ~equal (old_elts @ new_elts) in
+      let additional_elts = flatten (map new_elts ~f) in
+      let _old_ets, new_elts =
+        partition additional_elts ~f:(mem current_elts ~equal)
+      in
+      if is_empty new_elts then
+        current_elts
       else
-        (* TODO!!!!: mem should use [equal] argument. *)
-        let _old, new_seeds = partition acc' ~f:(mem ~set:acc) in
-        grow ~seeds:new_seeds acc'
+        grow ~new_elts current_elts
     in
-    grow ~seeds []
+    grow ~new_elts:seeds []
+
+  let to_string t ~to_string =
+    let strs = map t ~f:to_string in
+    String.concat strs ~sep:"; "
+
+  let rec equal t1 t2 ~equal:elt_equal =
+    match t1, t2 with
+    | [], [] -> true
+    | x :: t1, y :: t2 -> elt_equal x y && equal t1 t2 ~equal:elt_equal
+    | [], _ :: _
+    | _ :: _, [] -> false
 end
 
 module Unix = struct

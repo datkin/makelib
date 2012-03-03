@@ -1,2 +1,1 @@
-#!/usr/bin/zsh
-ledit ./lib/toplevel -init <(echo \#directory \"lib\")
+exec ledit ./lib/toplevel -init ocaml-init

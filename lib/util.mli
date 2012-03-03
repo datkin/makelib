@@ -18,6 +18,8 @@ module String : sig
   val compare: t -> t -> int
 
   val is_empty: t -> bool
+
+  val pp: Format.formatter -> t -> unit
 end
 
 module List : sig
@@ -27,15 +29,23 @@ module List : sig
 
   val init: int -> f:(int -> 'a) -> 'a t
 
+  val is_empty: 'a t -> bool
+
   val last: 'a t -> 'a option
 
   val map: 'a t -> f:('a -> 'b) -> 'b t
 
   val fold: 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
 
+  val mem: 'a list -> equal:('a -> 'a -> bool) -> 'a -> bool
+
   val dedupe: 'a list -> equal:('a -> 'a -> bool) -> 'a list
 
   val closure: 'a t -> equal:('a -> 'a -> bool) -> f:('a -> 'a list) -> 'a list
+
+  val to_string: 'a t -> to_string:('a -> string) -> string
+
+  val equal: 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
 end
 
 module Unix : sig

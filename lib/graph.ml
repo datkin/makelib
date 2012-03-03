@@ -45,6 +45,9 @@ end) = struct
 
   module Node_set = Set.Make(Node)
 
+  let nodes_equal n1 n2 =
+    compare n1 n2 = 0
+
   module Edge_info = struct
     type t =
       { in_: Node_set.t
@@ -156,7 +159,7 @@ end) = struct
 
   let filter_nodes t ~f:keep =
     let nodes = List.filter (nodes t) ~f:keep in
-    let keep = List.mem ~set:nodes in
+    let keep = List.mem nodes ~equal:nodes_equal in
     let filter_nodes node edge_info t =
       if keep node then
         let edge_info = Edge_info.filter edge_info ~f:keep in
