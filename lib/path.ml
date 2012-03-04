@@ -101,6 +101,8 @@ module Dir = struct
     | `Absolute, [] -> "/"
     | `Absolute, segments -> "/" ^ String.concat segments ~sep:"/" ^ "/"
 
+  let equal t1 t2 = compare t1 t2 = 0
+
   exception Non_absolute_dir of rel t
   exception Non_relative_dir of abs t
 end
@@ -240,7 +242,10 @@ let dir t =
 ;;
 
 let (^/) root path =
-  Rel.to_absolute ~of_:root (Rel.of_string path)
+  (* Ensure path is relative... *)
+  let path = Rel.to_string (Rel.of_string path) in
+  let t = of_string (Dir.to_string root ^ "/" ^ path) in
+  { t with kind = root.Dir.kind }
 ;;
 
 let to_string t =

@@ -15,6 +15,8 @@ module Dir : sig
   val to_string: 'a t -> string
 
   val to_path: 'a t -> 'a T.t
+
+  val equal: 'a t -> 'a t -> bool
 end
 
 module Abs : sig
