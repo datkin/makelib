@@ -191,7 +191,7 @@ let graph_tests =
     <&&> expect (G.topological_order g) ~is:(Some [1])
     <&&> expect (G.follow g 1) ~is:(Some [])
     <&&> expect (G.rewind g 1) ~is:(Some []))
-  ; make "a -> b" (fun () ->
+  ; make "constructors; a -> b" (fun () ->
     let g1 =
       let g = G.empty in
       let g = G.add_node g 1 in
@@ -225,6 +225,48 @@ let graph_tests =
     in
     expect (G.topological_order g) ~is:(Some [1;2;3])
     <&&> expect (G.topological_order g') ~is:(Some [3;2;1]))
+  ; make "neighbors" (fun () ->
+    let g = G.of_list [1,2; 1,3; 3,2] in
+    (* NB: The node lists are in descending order. *)
+    expect (G.follow g 1) ~is:(Some [3;2])
+    <&&> expect (G.follow g 2) ~is:(Some [])
+    <&&> expect (G.follow g 3) ~is:(Some [2])
+    <&&> expect (G.rewind g 1) ~is:(Some [])
+    <&&> expect (G.rewind g 2) ~is:(Some [3;1])
+    <&&> expect (G.rewind g 3) ~is:(Some [1])
+    <&&> expect (G.topological_order g) ~is:(Some [1;3;2]))
+  ; make "no order" (fun () ->
+    let g = G.of_list [1,1] in
+    expect (G.topological_order g) ~is:None)
+  ; make "has edge" (fun () ->
+    is_false (G.has_edge G.empty ~from:1 ~to_:2)
+    <&&>
+    let g = G.of_list [1,2; 1,3; 3,2] in
+    is_true (G.has_edge g ~from:1 ~to_:2)
+    <&&> is_false (G.has_edge g ~from:2 ~to_:1)
+    <&&> is_true (G.has_edge g ~from:1 ~to_:3)
+    <&&> is_false (G.has_edge g ~from:3 ~to_:1)
+    <&&> is_true (G.has_edge g ~from:3 ~to_:2)
+    <&&> is_false (G.has_edge g ~from:2 ~to_:3)
+    <&&> is_false (G.has_edge g ~from:1 ~to_:1)
+    <&&> is_false (G.has_edge g ~from:0 ~to_:1)
+    <&&> is_false (G.has_edge g ~from:1 ~to_:0))
+  ; make "filter high" (fun () ->
+    (* Make a graph with a bunch of nodes pointing to higher nodes. Filter out
+     * the higher nodes and then make sure the old pointers get tossed. *)
+    let g = G.of_list [1,2; 1,10; 2,10; 15,3; 15,1] in
+    let g' = G.filter_nodes g ~f:(fun node -> node < 10) in
+    list_eq [1;2;3] (G.nodes g')
+    <&&> expect (G.follow g' 1) ~is:(Some [2])
+    <&&> expect (G.follow g' 2) ~is:(Some [])
+    <&&> expect (G.rewind g' 3) ~is:(Some [])
+    <&&> expect (G.rewind g' 2) ~is:(Some [1])
+    <&&> expect (G.rewind g' 1) ~is:(Some []))
+  ; make "filter edges" (fun () ->
+    let g = G.of_list [1,2; 2,1; 1,3; 3,1; 2,3; 3,2] in
+    let g' = G.filter_edges g ~f:(const false) in
+    list_eq [1;2;3] (G.nodes g')
+    <&&> list_eq [] (G.edges g'))
   ]
 ;;
 

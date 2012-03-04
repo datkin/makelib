@@ -162,7 +162,8 @@ end) = struct
           add_edge t ~from:src ~to_:dest
         else t)
     in
-    Map.fold filter_edges t Map.empty
+    let base_map = List.fold (nodes t) ~init:Map.empty ~f:add_node in
+    Map.fold filter_edges t base_map
 
   let remove_node t node =
     let (<>) x y = not (nodes_equal x y) in
