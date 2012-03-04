@@ -57,7 +57,7 @@ module List = struct
   let init n ~f =
     let rec build m =
       if m < n then
-        (f n) :: build (m+1)
+        (f m) :: build (m+1)
       else
         []
     in

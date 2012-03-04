@@ -42,6 +42,8 @@ let list_tests =
   let open Util in
   [ make "list string" (fun () ->
     string_eq "[a; b]" (List.to_string ["a"; "b"] ~to_string:ident))
+  ; make "init" (fun () ->
+    list_eq ~to_string:string_of_int [0; 1; 2] (List.init 3 ~f:ident))
   ]
 ;;
 
