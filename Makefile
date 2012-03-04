@@ -8,6 +8,8 @@ OCAML_FLAGS=-w +A -warn-error +A
 
 LIBS=unix.cma
 
+objs = $(addprefix $(1), $(2:=.cmo))
+
 # All modules listed in order.
 # Add extensions, with, eg, $(MODULES:=.cmo)
 MODULES = \
@@ -19,7 +21,7 @@ MODULES = \
   ocamldep \
   graph
 
-OBJS=$(addprefix lib/, $(MODULES:=.cmo))
+OBJS=$(call objs, lib/, $(MODULES))
 
 # See: http://owen.sj.ca.us/~rk/howto/slides/make/slides/makesuff.html
 # Also: http://owen.sj.ca.us/~rk/howto/slides/make/slides/makemacro.html
@@ -27,7 +29,9 @@ OBJS=$(addprefix lib/, $(MODULES:=.cmo))
 # Don't delete intermediate files (ie .cmi files)
 .SECONDARY:
 
-.PHONY: clean test
+.PHONY: clean test all
+
+all: top
 
 lib/process.cmo: lib/util.cmo
 
@@ -51,9 +55,10 @@ lib/graph.cmo: lib/util.cmo
 	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.ml
 
 test: $(OBJS)
-	$(OCAMLC) $(OCAML_FLAGS) -I lib unix.cma lib/util.cmo test/test.ml
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -I test unix.cma $(OBJS) test/test.ml test/tests.ml -o test/run
+	./test/run
 
-top: $(OBJS)
+top: test
 	$(MKTOP) -o lib/toplevel $(LIBS) $(OBJS)
 	echo "Remember #directory "lib""
 

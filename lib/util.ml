@@ -110,7 +110,7 @@ module List = struct
 
   let to_string t ~to_string =
     let strs = map t ~f:to_string in
-    String.concat strs ~sep:"; "
+    "[" ^ String.concat strs ~sep:"; " ^ "]"
 
   let rec equal t1 t2 ~equal:elt_equal =
     match t1, t2 with
