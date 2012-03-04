@@ -19,6 +19,8 @@ module String : sig
 
   val is_empty: t -> bool
 
+  val strip_ws: t -> t
+
   val pp: Format.formatter -> t -> unit
 end
 
@@ -52,6 +54,7 @@ module Unix : sig
   include module type of UnixLabels
 end
 
+val sprintf: ('a, unit, string) format -> 'a
 val failwithf: ('a, unit, string, unit -> 'b) format4 -> 'a
 
 val const: 'a -> 'b -> 'a

@@ -35,6 +35,9 @@ let string_tests =
     expect (String.rsplit2 "a,b,c" ~on:',') ~is:(Some ("a,b", "c")))
   ; make "empty" (fun () ->
     (is_true (String.is_empty "")) <&&> (is_false (String.is_empty "x")))
+  ; make "strip" (fun () ->
+    string_eq "foo" (String.strip_ws "   foo\t \n")
+    <&&> string_eq "" (String.strip_ws "   \n \t \n"))
   ]
 ;;
 
@@ -163,6 +166,13 @@ let path_tests =
     <&&> expect (Path.file abs_path) ~is:(Some "x")
     <&&> expect (Path.dir abs_path) ~is:(Path.Abs.Dir.of_string "/home/rob")
     <&&> string_eq "/home/rob/x" (Path.to_string abs_path))
+  (* It looks like Filename.basename implementation does the 'wrong thing'.
+  ; make "basename" (fun () ->
+    string_eq "foo" (Path.basename (Path.of_string "bar/foo"))
+    <&&> string_eq "foo" (Path.basename (Path.of_string "bar/foo/"))
+    <&&> string_eq "." (Path.basename (Path.of_string "."))
+    <&&> string_eq "/" (Path.basename (Path.of_string "/")))
+  *)
   ]
 ;;
 

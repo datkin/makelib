@@ -43,6 +43,23 @@ module String = struct
       Some (split2 (index t split_char) t)
     with _ -> None
 
+  (* Strip all whitespace from the front and back of the string. *)
+  let strip_ws t =
+    let is_ws char =
+      char = ' ' || char = '\t' || char = '\n'
+    in
+    let rec strip_forward n str =
+      if n >= length str then ""
+      else if is_ws str.[n] then strip_forward (n+1) str
+      else sub str ~pos:n ~len:((length str) - n)
+    in
+    let rec strip_backward n str =
+      if n < 0 then ""
+      else if is_ws str.[n] then strip_backward (n-1) str
+      else sub str ~pos:0 ~len:(n+1)
+    in
+    strip_forward 0 (strip_backward ((length t) - 1) t)
+
   let is_empty t =
     length t = 0
 
@@ -124,6 +141,7 @@ module Unix = struct
   include UnixLabels
 end
 
+let sprintf fmt = Printf.ksprintf (fun s -> s) fmt;;
 let failwithf fmt = Printf.ksprintf (fun s () -> failwith s) fmt;;
 
 let const a _ = a;;

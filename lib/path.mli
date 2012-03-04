@@ -65,8 +65,6 @@ val is_directory: 'a t -> bool
 
 val split: 'a t -> 'a Dir.t * string option
 
-val basename: 'a t -> string
-
 val equal: 'a t -> 'a t -> bool
 
 val compare: 'a t -> 'a t -> int

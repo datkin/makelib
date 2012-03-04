@@ -257,10 +257,6 @@ let to_string t =
   | `Relative -> Rel.to_string t
 ;;
 
-let basename path =
-  Filename.basename (to_string path)
-;;
-
 let pp formatter t =
   String.pp formatter (to_string t)
 

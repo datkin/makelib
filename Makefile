@@ -19,6 +19,7 @@ MODULES = \
   module \
   process \
   ocamldep \
+  ocamlobjinfo \
   graph
 
 OBJS=$(call objs, lib/, $(MODULES))
@@ -60,7 +61,6 @@ test: $(OBJS)
 
 top: test
 	$(MKTOP) -o lib/toplevel $(LIBS) $(OBJS)
-	echo "Remember #directory "lib""
 
 clean:
 	rm lib/*.cmi
