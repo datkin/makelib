@@ -142,6 +142,27 @@ let path_tests =
     let path = dir ^/ "../x" in
     expect (Path.file path) ~is:(Some "x")
     <&&> expect_dir (Path.dir path) ~is:(Path.Rel.Dir.of_string "foo"))
+  ; make "concat abs" (fun () ->
+    let dir = Path.Abs.Dir.of_string "/foo/bar" in
+    let path = dir ^/ "../../root/x" in
+    expect (Path.file path) ~is:(Some "x")
+    <&&> expect_dir (Path.dir path) ~is:(Path.Abs.Dir.of_string "/root"))
+  ; make "to-rel" (fun () ->
+    let dir = Path.Abs.Dir.of_string "/home/datkin" in
+    let path = Path.Abs.of_string "/home/rob/x" in
+    let rel_path = Path.Abs.to_relative ~of_:dir path in
+    is_false (Path.is_directory rel_path)
+    <&&> expect (Path.file rel_path) ~is:(Some "x")
+    <&&> expect_dir (Path.dir rel_path) ~is:(Path.Rel.Dir.of_string "../rob")
+    <&&> string_eq "../rob/x" (Path.to_string rel_path))
+  ; make "to-abs" (fun () ->
+    let dir = Path.Abs.Dir.of_string "/home/datkin" in
+    let path = Path.Rel.of_string "../rob/x" in
+    let abs_path = Path.Rel.to_absolute ~of_:dir path in
+    is_false (Path.is_directory abs_path)
+    <&&> expect (Path.file abs_path) ~is:(Some "x")
+    <&&> expect (Path.dir abs_path) ~is:(Path.Abs.Dir.of_string "/home/rob")
+    <&&> string_eq "/home/rob/x" (Path.to_string abs_path))
   ]
 ;;
 

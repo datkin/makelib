@@ -197,6 +197,9 @@ module Rel = struct
       match t.Dir.kind with
       | `Relative -> {t with Dir.kind = `Relative}
       | `Absolute -> raise (Dir.Non_relative_dir {t with Dir.kind = `Absolute})
+
+    let current = of_string "."
+    let up = of_string ".."
   end
 
   let to_string t =

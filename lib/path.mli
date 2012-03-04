@@ -48,6 +48,9 @@ module Rel : sig
   module Dir : sig
     type t = rel Dir.t
     val of_string: string -> t
+
+    val current: t
+    val up: t
   end
 
   module Map : Map.S with type key = t
