@@ -67,6 +67,10 @@ end) = struct
 
     let in_ t = Node_set.fold cons t.in_ []
 
+    let connected t =
+      let nodes = Node_set.union t.out t.in_ in
+      Node_set.fold cons nodes []
+
     let has_in t node =
       Node_set.mem node t.in_
 
@@ -117,9 +121,9 @@ end) = struct
 
   let add_node t node =
     if Map.mem node t then
-      Map.add node Edge_info.empty t
-    else
       t
+    else
+      Map.add node Edge_info.empty t
 
   let add_edge t ~from:src ~to_:dest =
     let add node ~to_:target ~with_:add t =
@@ -157,9 +161,30 @@ end) = struct
     in
     Map.fold filter_edges t Map.empty
 
+  let remove_node t node =
+    let (<>) x y = not (nodes_equal x y) in
+    try
+      let edge_info = Map.find node t in
+      let neighbors = Edge_info.connected edge_info in
+      let t =
+        List.fold neighbors ~init:t ~f:(fun t neighbor ->
+          try
+            let edge_info = Map.find neighbor t in
+            let edge_info = Edge_info.filter edge_info ~f:((<>) node) in
+            Map.add neighbor edge_info t
+          with
+          | Not_found -> t)
+      in
+      Map.remove node t
+    with
+    (* Probably shouldn't happen! *)
+    | Not_found -> t
+
   let filter_nodes t ~f:keep =
     let nodes = List.filter (nodes t) ~f:keep in
     let keep = List.mem nodes ~equal:nodes_equal in
+    (* TODO: This could be optimized b/c we know exactly which edge_infos need to
+     * be updated. *)
     let filter_nodes node edge_info t =
       if keep node then
         let edge_info = Edge_info.filter edge_info ~f:keep in
@@ -175,16 +200,29 @@ end) = struct
   let map t ~f =
     of_list (List.flatten (List.map (edges t) ~f))
 
-  (* Is it possible that this might not get all nodes? *)
-  (* BUG: if the graph is disconnected, we'll return the connected components
+  (* BUG?: if the graph is disconnected, we'll return the connected components
    * with no cycles. *)
   let topological_order t =
-    (* All nodes with no children. *)
-    let leaf_nodes =
-      List.filter (nodes t) ~f:(fun node ->
-        match follow t node with
-        | None | Some [] -> true
-        | Some _ -> false)
+    let rec add_next t ordered_nodes =
+      (* All nodes with no outgoing edges. *)
+      let leaves =
+        List.filter (nodes t) ~f:(fun node ->
+          match follow t node with
+          | None | Some [] -> true
+          | Some _ -> false)
+      in
+      match leaves with
+      | [] -> ordered_nodes
+      | leaves ->
+        let ordered_nodes = leaves @ ordered_nodes in
+        let t = List.fold leaves ~init:t ~f:remove_node in
+        add_next t ordered_nodes
+    in
+    match add_next t [] with
+    | [] -> None
+    | order -> Some order
+
+    (*
     in
     let equal x y = compare x y = 0 in
     match leaf_nodes with
@@ -197,6 +235,7 @@ end) = struct
           | None -> [])
       in
       Some ordered_nodes
+      *)
 
   let dump t node_to_string =
     List.map (Map.bindings t) ~f:(fun (node, edge_info) ->

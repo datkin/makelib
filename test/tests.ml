@@ -166,10 +166,64 @@ let path_tests =
   ]
 ;;
 
+let graph_tests =
+  let open Util in
+  let module G = Graph.Make(struct
+    type t = int
+    let compare = compare
+  end) in
+  [ make "empty" (fun () ->
+    list_eq [] (G.nodes G.empty)
+    <&&> list_eq [] (G.edges G.empty)
+    <&&> expect (G.follow G.empty 1) ~is:None
+    <&&> expect (G.rewind G.empty 1) ~is:None
+    (* TODO: Some []? *)
+    <&&> expect (G.topological_order G.empty) ~is:None)
+  ; make "has node" (fun () ->
+    let g1 = G.add_node G.empty 1 in
+    is_false (G.has_node G.empty 1)
+    <&&> is_true (G.has_node g1 1)
+    <&&> is_false (G.has_node g1 2))
+  ; make "singleton" (fun () ->
+    let g = G.add_node G.empty 1 in
+    list_eq [1] (G.nodes g)
+    <&&> list_eq [] (G.edges g)
+    <&&> expect (G.topological_order g) ~is:(Some [1])
+    <&&> expect (G.follow g 1) ~is:(Some [])
+    <&&> expect (G.rewind g 1) ~is:(Some []))
+  ; make "a -> b" (fun () ->
+    let g1 =
+      let g = G.empty in
+      let g = G.add_node g 1 in
+      let g = G.add_node g 2 in
+      let g = G.add_edge g ~from:1 ~to_:2 in
+      g
+    in
+    let g2 =
+      let g = G.empty in
+      let g = G.add_edge g ~from:1 ~to_:2 in
+      g
+    in
+    let g3 =
+      G.of_list [{G.from = 1; to_ = 2}]
+    in
+    let gs = [g1; g2; g3] in
+    is_true (G.equal g1 g2) <&&> is_true (G.equal g2 g1)
+    <&&> is_true (G.equal g1 g3) <&&> is_true (G.equal g2 g3)
+    <&&> is_true (List.for_all gs ~f:(fun g ->
+      List.equal ~equal:(=) [1;2] (G.nodes g)))
+    <&&> is_true (List.for_all gs ~f:(fun g ->
+      List.equal ~equal:(=) [{G.from = 1; to_ = 2}] (G.edges g)))
+    <&&> is_true (List.for_all gs ~f:(fun g ->
+      (G.topological_order g) = (Some [1;2]))))
+  ]
+;;
+
 let tests =
   string_tests
   @ list_tests
   @ path_tests
+  @ graph_tests
 ;;
 
 let () = run_all_and_report tests ;;
