@@ -31,7 +31,10 @@ module type S = sig
 
   val topological_order: t -> node list option
 
-  val of_list: edge list -> t
+  val of_edges: edge list -> t
+  val of_list: (node * node) list -> t
+
+  val to_list: t -> (node * node) list
 
   val dump
     : t

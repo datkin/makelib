@@ -204,18 +204,27 @@ let graph_tests =
       let g = G.add_edge g ~from:1 ~to_:2 in
       g
     in
-    let g3 =
-      G.of_list [{G.from = 1; to_ = 2}]
-    in
-    let gs = [g1; g2; g3] in
+    let g3 = G.of_edges [{G.from = 1; to_ = 2}] in
+    let g4 = G.of_list [1,2] in
+    let gs = [g1; g2; g3; g4] in
     is_true (G.equal g1 g2) <&&> is_true (G.equal g2 g1)
     <&&> is_true (G.equal g1 g3) <&&> is_true (G.equal g2 g3)
+    <&&> is_true (G.equal g1 g4) <&&> is_true (G.equal g2 g4)
+    <&&> is_true (G.equal g3 g4) <&&> is_true (G.equal g4 g4)
     <&&> is_true (List.for_all gs ~f:(fun g ->
       List.equal ~equal:(=) [1;2] (G.nodes g)))
     <&&> is_true (List.for_all gs ~f:(fun g ->
       List.equal ~equal:(=) [{G.from = 1; to_ = 2}] (G.edges g)))
     <&&> is_true (List.for_all gs ~f:(fun g ->
       (G.topological_order g) = (Some [1;2]))))
+  ; make "reverse" (fun () ->
+    let g = G.of_list [1, 2; 2, 3] in
+    let g' =
+      G.map g ~f:(fun {G.from = src; to_ = dest} ->
+        [{G.from = dest; to_= src}])
+    in
+    expect (G.topological_order g) ~is:(Some [1;2;3])
+    <&&> expect (G.topological_order g') ~is:(Some [3;2;1]))
   ]
 ;;
 

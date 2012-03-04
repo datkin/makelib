@@ -28,7 +28,10 @@ module type S = sig
 
   val topological_order: t -> node list option
 
-  val of_list: edge list -> t
+  val of_edges: edge list -> t
+  val of_list: (node * node) list -> t
+
+  val to_list: t -> (node * node) list
 
   val dump
     : t
@@ -193,12 +196,19 @@ end) = struct
     in
     Map.fold filter_nodes t Map.empty
 
-  let of_list edges =
+  let of_edges edges =
     List.fold edges ~init:Map.empty ~f:(fun t { from=src; to_=dest } ->
       add_edge t ~from:src ~to_:dest)
 
+  let of_list edge_tuples =
+    of_edges (List.map edge_tuples ~f:(fun (src, dest) ->
+      { from = src; to_ = dest }))
+
+  let to_list t =
+    List.map (edges t) ~f:(fun { from=src; to_=dest } -> (src, dest))
+
   let map t ~f =
-    of_list (List.flatten (List.map (edges t) ~f))
+    of_edges (List.flatten (List.map (edges t) ~f))
 
   (* BUG?: if the graph is disconnected, we'll return the connected components
    * with no cycles. *)
@@ -221,21 +231,6 @@ end) = struct
     match add_next t [] with
     | [] -> None
     | order -> Some order
-
-    (*
-    in
-    let equal x y = compare x y = 0 in
-    match leaf_nodes with
-    | [] -> None
-    | leaves ->
-      let ordered_nodes =
-        List.closure leaves ~equal ~f:(fun node ->
-          match rewind t node with
-          | Some nodes -> nodes
-          | None -> [])
-      in
-      Some ordered_nodes
-      *)
 
   let dump t node_to_string =
     List.map (Map.bindings t) ~f:(fun (node, edge_info) ->
