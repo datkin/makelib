@@ -20,7 +20,8 @@ MODULES = \
   process \
   ocamldep \
   ocamlobjinfo \
-  graph
+  graph \
+  source
 
 OBJS=$(call objs, lib/, $(MODULES))
 
@@ -49,6 +50,12 @@ lib/file.cmo: lib/path.cmo
 
 lib/graph.cmo: lib/util.cmo
 
+lib/source.cmi: lib/source.mli
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -I +camlp4 camlp4fulllib.cma lib/source.mli
+
+lib/source.cmo: lib/source.ml lib/source.cmi
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -I +camlp4 camlp4fulllib.cma lib/source.ml
+
 %.cmi: %.mli
 	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.mli
 
@@ -56,7 +63,7 @@ lib/graph.cmo: lib/util.cmo
 	$(OCAMLC) $(OCAML_FLAGS) -I lib -c $*.ml
 
 test: $(OBJS)
-	$(OCAMLC) $(OCAML_FLAGS) -I lib -I test unix.cma $(OBJS) test/test.ml test/tests.ml -o test/run
+	$(OCAMLC) $(OCAML_FLAGS) -I lib -I test $(LIBS) $(OBJS) test/test.ml test/tests.ml -o test/run
 	./test/run
 
 top: test
