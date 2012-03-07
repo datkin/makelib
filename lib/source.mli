@@ -1,6 +1,14 @@
 module Module_environment : sig
   type t
 
+  type env = t
+
+  module Value : sig
+    type t =
+      | Named of string
+      | Anonymous of env
+  end
+
   (* External corresponds to a name that we know is an external dependency.
    *   if eg, let module M = List (* lookup M gives external List *)
    *
@@ -34,15 +42,18 @@ module Module_environment : sig
    * full name, whereas an include actually adds definitions:
    *
    * http://caml.inria.fr/pub/docs/manual-ocaml/manual019.html *)
-  val open_module: string -> t
+  (* These functions will lookup if the included module name is known in the
+   * environment. *)
+  val open_module: Value.t -> t
 
-  val include_module: string -> t
+  val include_module: Value.t -> t
 
   (* This is where the open/include distiction will matter? This will be for use
    * when defining a module in terms of an environment? *)
   val exported_environment: t -> t
 
-  val define_module: string -> t -> t
+  (* Add a module binding for a known module to this environment. *)
+  val define_module: t -> string -> Value.t -> t
 end
 
 (*

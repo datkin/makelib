@@ -1,38 +1,127 @@
 open Util
 open Camlp4.PreCast
 
-(* We have a module environment when we are eval'ing a module. It's very simple
- * -- it binds a module name to a module type. If a name isn't in the
- * environment, it's an external module. The module def'n itself closes over a
- * module environment. For accessing a submodule we need to access this
- * subenvironment. *)
+module Module_environment = struct
 
-module Module_info = struct
-  type scope =
-    { }
+  module String_map = Map.Make(String)
 
   type t =
-    { name: string option
-    ; inner_modules: t list (* only inner _exposed_ modules? This could probably
-    be a combination of known and unknown modules. *)
-    ; scopes: 
-    }
+    binding String_map.t
+  and representation =
+    | Named of string
+    | Anonymous of t
+  and value =
+    | External
+    | Known of t
+  (* This Public/Private type exists to address this situation:
+    *
+    * module M = struct ... end
+    * open Foo (* Foo includes a module M *)
+    *
+    * M is still publicly exposed, but M is now shadowed locally. Yikes!
+    *)
+  and binding =
+    | Public of string
+    (* an optional public binding that's been shadowed. *)
+    | Private of string * string option
 
+  module Value = struct
+    type t = representation
+  end
+
+  let empty = String_map.empty
+
+  let public_values t =
+    let collect name binding acc =
+      match binding with
+      | Public value -> value :: acc
+      | Private (_, Some value) -> value :: acc
+      | Pirvate (_, None) -> acc
+    in
+    Map.fold collect t []
+
+  let new_binding ~is_private =
+    if is_private
+    then fun value -> Public value
+    else fun value -> Private (value, None)
+
+  let merge ~base:base_bindings ~new_:new_bindings ~is_private =
+    let merge_one =
+      if is_private then
+        fun new_value current_binding ->
+          match current_binding with
+          | Public current_value -> Private (value, Some current_value)
+          | Private (_, shadowed_value) -> Private (new_value, shadowed_value)
+      else
+        const (Public new_value)
+    in
+    let new_binding = new_binding ~is_private in
+    let merge_all (name, new_value) bindings =
+      try
+        let current_binding = String_map.find name bindings in
+        String_map.add name (merge_one new_value current_binding) bindings
+      with
+      | Not_found ->
+        String_map.add name (new_binding new_value) bindings
+    in
+    List.fold (public_values new_bindings) ~init:base_bindings ~f:merge
+
+  let get_value t repr =
+    match repr with
+    | Named name ->
+      begin try
+        Known (String_map.find name t)
+      with
+      | Not_found -> External
+      end
+    | Anonymous env -> Known env
+
+  let generic_include t repr ~is_private =
+    match get_value r repr with
+    | Known env -> merge ~base:t ~new_:env ~is_private
+    (* This bit is wrong *)
+    | External -> String_map.add name (new_binding ~is_private External) t
+
+  (* Opening or including any module basically erases any knowledge we have
+   * about how future bindings in the module may resolve...
+   *
+   * module M = ...
+   * include X
+   *
+   * Once X has been included, it's _possible that further references to M
+   * should be resolved through X, although if they can't be resolved through
+   * X, they are satisfied by M.
+   *
+   * However, for the purposes of dependency resolution, it may be okay to
+   * fudge...? That is to say, we know we'll have to build X first b/c it's
+   * included. If it happens to redefine M, fine!
+   *
+   * The only problem would occur if we later had a reference to something
+   * like [M.Foo.some_value]. If we don't acknolwedge that M has been rebound,
+   * and the fold M binding (explicitly defined on the first line in the
+   * example) is a closed ref, then we may interpret the M.Foo.some_value
+   * refeence as an error, when it's possible that we're just expecting X to
+   * contain M.Foo.some_value.
+   *)
+  let open_module t repr =
+    generic_include t repr ~is_private:true
+
+  let include_module t value =
+    generic_include t repr ~is_private:false
+
+  let define_module t name value =
+    match get_value r repr with
+    | 
+
+  (* TODO *)
+  let exported_environment t = t
+
+  let lookup t name =
+    let { opens; includes; bindings } = t in
 
 end
 
-type module_ =
-  { name: string
-  (* Order matters -- if names are re-used, shadowing occurs. *)
-  ; inner_modules: export list }
-;;
-
-type import = {
-  (* Order matters -- multiple imports may cause shadowing. *)
-  { opened_modules: name list
-  ; used_modules: name list
-  (* Any import scopes nested inside of this one. *)
-  ; scopes: import list }
+module Env = Module_environment;;
 
 (* In order to do proper dependency resolution, we need to do determine two
  * things for each ml file (module) we compile:
@@ -93,13 +182,21 @@ type import = {
  * Ast.StOpn (uid)
  * Ast.
  *)
+(*
 let modules_used path =
   let module M = Camlp4OCamlRevisedParser.Make(Syntax) in
   let module N = Camlp4OCamlParser.Make(Syntax) in
   let stream = Stream.of_channel (open_in (Path.to_string path)) in
   let file_loc = Loc.mk (Path.to_string path) in
+  ignore (stream, file_loc)
 ;;
 
 let declared_modules path =
   ignore path; []
+;;
+*)
+
+let module_info str_item =
+  ignore str_item;
+  Env.empty
 ;;
