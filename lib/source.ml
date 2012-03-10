@@ -5,55 +5,113 @@ module Module_environment = struct
 
   module String_map = Map.Make(String)
 
+  module Exported = struct
+    type t =
+      { bindings: value String_map.t
+      ; includes: string list }
+    and value =
+      | External
+      | Known of t
+  end
+
+  (* The runtime representation of a module. *)
+  module Representation = struct
+    type t =
+      | Named of string
+      | Anonymous of Exported.t
+  end
+
   type t =
-    binding String_map.t
+    { bindings: (binding, value) String_map.t
+    ; includes: [ `Public of string | `Private of string ] list
   and representation =
     | Named of string
-    | Anonymous of t
+    | Anonymous of Exported.t
   and value =
     | External
-    | Known of t
+    | Known of Exported.t
   (* This Public/Private type exists to address this situation:
-    *
-    * module M = struct ... end
-    * open Foo (* Foo includes a module M *)
-    *
-    * M is still publicly exposed, but M is now shadowed locally. Yikes!
-    *)
-  and binding =
-    | Public of string
+   *
+   * module M = struct ... end
+   * open Foo (* Foo includes a module M *)
+   *
+   * M is still publicly exposed, but M is now shadowed locally. Yikes!
+   *)
+  (* The int gives the length of the includes list at the time that the
+   * binding was added. Any includes added _after_ that point may shadow that
+   * binding. But that binding will surely shadow anything with the same name
+   * from an include _before_ that binding. *)
+  type binding =
+    | Public of value * int
     (* an optional public binding that's been shadowed. *)
-    | Private of string * string option
+    | Private of value * (value * int) option
 
   module Value = struct
     type t = representation
   end
 
-  let empty = String_map.empty
+  let empty =
+    { bindings = String_map.empty
+    ; includes = [] }
 
-  let public_values t =
-    let collect name binding acc =
+  let exported_environment t =
+    let tagged_includes =
+      let num_includes = List.length t.includes in
+      List.mapi t.includes ~f:(fun i inc -> num_includes - i, inc)
+    in
+    let exported_includes =
+      List.filter_map tagged_includes ~f:(fun (i, inc) ->
+        match inc with
+        | `Private _ -> None
+        | `Public name -> Some (i, name))
+    in
+    let exported_includes =
+      let num_exported_includes = List.length exported_includes in
+      List.mapi exported_includes ~f:ident
+    in
+    let translate_depth depth =
+      try
+        let new_depth, _ =
+          List.find exported_includes ~f:(fun (_new_depth, (old_depth, _)) ->
+            old_depth <= depth)
+        in
+        new_depth
+      with
+      | Not_found -> 0
+    in
+    let collect name (binding, depth) acc =
+      let depth = translate_depth depth in
       match binding with
-      | Public value -> value :: acc
-      | Private (_, Some value) -> value :: acc
+      | Public value -> (value, depth) :: acc
+      | Private (_, Some value) -> (value, depth) :: acc
       | Pirvate (_, None) -> acc
     in
-    Map.fold collect t []
+    let exported_includes =
+      List.map exported_includes ~f:(fun (_, (_, name)) -> name)
+    in
+    let exported_bindings = Map.fold collect t [] in
+    (exported_bindings, exported_includes)
 
-  let new_binding ~is_private =
+  let new_binding ~depth ~is_private =
     if is_private
-    then fun value -> Public value
-    else fun value -> Private (value, None)
+    then fun value -> (Public value, depth)
+    else fun value -> (Private (value, None), depth)
 
-  let merge ~base:base_bindings ~new_:new_bindings ~is_private =
+  let merge ~base:t ~new_:new_t ~is_private =
+    let current_depth = List.length t.includes in
     let merge_one =
       if is_private then
-        fun new_value current_binding ->
-          match current_binding with
-          | Public current_value -> Private (value, Some current_value)
-          | Private (_, shadowed_value) -> Private (new_value, shadowed_value)
+        fun (new_value, depth) (current_binding, current_binding_depth) ->
+          let depth = depth + current_binding_depth
+          let new_binding =
+            match current_binding with
+            | Public current_value -> Private (value, Some current_value)
+            | Private (_, shadowed_value) -> Private (new_value, shadowed_value)
+          in
       else
-        const (Public new_value)
+        fun (new_value, depth) ->
+          let depth = current_depth + depth in
+          const (new_binding ~depth ~is_private new_value)
     in
     let new_binding = new_binding ~is_private in
     let merge_all (name, new_value) bindings =

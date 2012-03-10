@@ -37,6 +37,8 @@ module List : sig
 
   val map: 'a t -> f:('a -> 'b) -> 'b t
 
+  val mapi: 'a t -> f:(int -> 'a -> 'b) -> 'b t
+
   val fold: 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
 
   val mem: 'a list -> equal:('a -> 'a -> bool) -> 'a -> bool
@@ -48,6 +50,27 @@ module List : sig
   val to_string: 'a t -> to_string:('a -> string) -> string
 
   val equal: 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
+
+  val filter_map: 'a t -> f:('a -> 'b option) -> 'b list
+
+  val partition_map
+    :  'a t
+    -> f:('a -> [ `Fst of 'b | `Snd of 'c ])
+    -> 'b list * 'c list
+end
+
+module Non_empty_list : sig
+  type 'a t
+
+  val create: 'a -> 'a t
+
+  val add: 'a t -> 'a -> 'a t
+
+  val to_list: 'a t -> 'a list
+
+  val hd: 'a t -> 'a
+
+  val split: 'a t -> 'a * 'a list
 end
 
 module Unix : sig
@@ -58,3 +81,5 @@ val sprintf: ('a, unit, string) format -> 'a
 val failwithf: ('a, unit, string, unit -> 'b) format4 -> 'a
 
 val const: 'a -> 'b -> 'a
+
+val ident: 'a -> 'a

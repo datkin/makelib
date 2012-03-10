@@ -95,6 +95,14 @@ module List = struct
 
   let map t ~f = map ~f t
 
+  let mapi t ~f =
+    let rec mapi n t acc =
+      match t with
+      | [] -> List.rev acc
+      | x :: xs -> (mapi (n+1) xs (f n x :: acc))
+    in
+    mapi 0 t []
+
   let rec mem t ~equal x =
     match t with
     | [] -> false
@@ -135,6 +143,45 @@ module List = struct
     | x :: t1, y :: t2 -> elt_equal x y && equal t1 t2 ~equal:elt_equal
     | [], _ :: _
     | _ :: _, [] -> false
+
+  let filter_map t ~f =
+    let rec collect t acc =
+      match t with
+      | [] -> List.rev acc
+      | x :: xs ->
+        let acc =
+          match f x with
+          | Some y -> y :: acc
+          | None -> acc
+        in
+        collect xs acc
+    in
+    collect t []
+
+  let partition_map t ~f =
+    let rec collect t fst_acc snd_acc =
+      match t with
+      | [] -> List.rev fst_acc, List.rev snd_acc
+      | x :: xs ->
+        match f x with
+        | `Fst fst -> collect xs (fst :: fst_acc) snd_acc
+        | `Snd snd -> collect xs fst_acc (snd :: snd_acc)
+    in
+    collect t [] []
+end
+
+module Non_empty_list = struct
+  type 'a t = 'a * 'a list
+
+  let create x = (x, [])
+
+  let add (x, xs) x' = (x, x' :: xs)
+
+  let to_list (x, xs) = x :: xs
+
+  let hd (x, _) = x
+
+  let split (x, xs) = x, xs
 end
 
 module Unix = struct
@@ -145,3 +192,5 @@ let sprintf fmt = Printf.ksprintf (fun s -> s) fmt;;
 let failwithf fmt = Printf.ksprintf (fun s () -> failwith s) fmt;;
 
 let const a _ = a;;
+
+let ident x = x;;

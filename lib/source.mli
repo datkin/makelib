@@ -1,12 +1,19 @@
+open Util
+
 module Module_environment : sig
+
   type t
 
-  type env = t
+  (* This is dinstinguished from a standard environment because it does not
+   * contain any bindings introduced by an [open]. *)
+  module Exported : sig
+    type t
+  end
 
-  module Value : sig
+  module Repr : sig
     type t =
       | Named of string
-      | Anonymous of env
+      | Anonymous of Exported.t
   end
 
   (* External corresponds to a name that we know is an external dependency.
@@ -22,38 +29,47 @@ module Module_environment : sig
    *   External ("Foo", ["Code.Std"; "Util"])
    * (lookup [module M = struct end] "M") -> Local []
    * (lookup [module M = struct end] "M.X") -> No_such_module
+   * (lookup [module M = struct ... end;; open Util;;] "M") ->
+   *   Ambiguous ([...], ["Util"]) (* the first represents local M env *)
    *
    * Local of t means the module is locally defined, with a known environment.
+   *
+   * Ambiguous means the module was defined locally, but intervening open or
+   * include may have shadowed that binding.
    *
    * No such module means we know for _sure_ that the module you've asked for is
    * not in the given environment (this would be the case if the module
    * environment corresponds to the interface of some module that is statically
    * known).
+   *
+   * Presumably we will start all modules with a base environment that includes
+   * the standard lib modules?
    *)
   val lookup
     :  t
     -> string
     -> [ `External of string * string list
-       | `Local of t
-       | `No_such_module ]
+       | `Local of Exported.t
+       | `Ambiguous of Exported.t * string Non_empty_list.t
+       | `Unbound ]
 
   (* Difference between open and include is that open basically provides local
-   * aliasing, so things within scope of the open do not need to use somethings
-   * full name, whereas an include actually adds definitions:
+   * aliasing, so things within scope of the open do not need to use something's
+   * full name, whereas an include actually adds definitions. See:
    *
    * http://caml.inria.fr/pub/docs/manual-ocaml/manual019.html *)
-  (* These functions will lookup if the included module name is known in the
-   * environment. *)
-  val open_module: Value.t -> t
+  (* If a named value is passed, these functions will resolve that name if it is
+   * bound in the environment. *)
+  val open_module: t -> Repr.t -> t
 
-  val include_module: Value.t -> t
+  val include_module: t -> Repr.t -> t
 
   (* This is where the open/include distiction will matter? This will be for use
    * when defining a module in terms of an environment? *)
-  val exported_environment: t -> t
+  val exported_environment: t -> Exported.t
 
   (* Add a module binding for a known module to this environment. *)
-  val define_module: t -> string -> Value.t -> t
+  val define_module: t -> string -> Repr.t -> t
 end
 
 (*
