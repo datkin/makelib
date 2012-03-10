@@ -57,6 +57,8 @@ module List : sig
     :  'a t
     -> f:('a -> [ `Fst of 'b | `Snd of 'c ])
     -> 'b list * 'c list
+
+  val find_map: 'a t -> f:('a -> 'b option) -> 'b option
 end
 
 module Non_empty_list : sig
@@ -71,6 +73,46 @@ module Non_empty_list : sig
   val hd: 'a t -> 'a
 
   val split: 'a t -> 'a * 'a list
+end
+
+module Map : sig
+  module type S = sig
+    type key
+
+    type 'a t
+
+    val empty: 'a t
+
+    val is_empty: 'a t -> bool
+
+    val mem: 'a t -> key -> bool
+
+    val add: 'a t -> key -> 'a -> 'a t
+
+    val find: 'a t -> key -> 'a option
+
+    val remove: 'a t -> key -> 'a t
+
+    val compare: 'a t -> 'a t -> cmp:('a -> 'a -> int) -> int
+
+    val equal: 'a t -> 'a t -> eq:('a -> 'a -> bool) -> bool
+
+    val fold: 'a t -> init:'b -> f:('b -> key:key -> data:'a -> 'b) -> 'b
+
+    val map: 'a t -> f:('a -> 'b) -> 'b t
+
+    val mapi: 'a t -> f:(key -> 'a -> 'b) -> 'b t
+
+    val filter_map: 'a t -> f:('a -> 'b option) -> 'b t
+
+    val keys: 'a t -> key list
+
+    val data: 'a t -> 'a list
+
+    val to_alist: 'a t -> (key * 'a) list
+  end
+
+  module Make(Ord: Map.OrderedType): S with type key = Ord.t
 end
 
 module Unix : sig

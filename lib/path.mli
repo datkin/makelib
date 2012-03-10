@@ -1,3 +1,5 @@
+open Util
+
 module T : sig
   type abs
   type rel

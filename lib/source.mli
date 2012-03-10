@@ -66,7 +66,7 @@ module Module_environment : sig
 
   (* This is where the open/include distiction will matter? This will be for use
    * when defining a module in terms of an environment? *)
-  val exported_environment: t -> Exported.t
+  val exported: t -> Exported.t
 
   (* Add a module binding for a known module to this environment. *)
   val define_module: t -> string -> Repr.t -> t

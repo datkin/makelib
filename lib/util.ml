@@ -168,6 +168,14 @@ module List = struct
         | `Snd snd -> collect xs fst_acc (snd :: snd_acc)
     in
     collect t [] []
+
+  let rec find_map t ~f =
+    match t with
+    | [] -> None
+    | x :: xs ->
+      match f x with
+      | Some y -> Some y
+      | None -> find_map xs ~f
 end
 
 module Non_empty_list = struct
@@ -182,6 +190,66 @@ module Non_empty_list = struct
   let hd (x, _) = x
 
   let split (x, xs) = x, xs
+end
+
+module Map = struct
+  module type S = sig
+    type key
+    type 'a t
+    val empty: 'a t
+    val is_empty: 'a t -> bool
+    val mem: 'a t -> key -> bool
+    val add: 'a t -> key -> 'a -> 'a t
+    val find: 'a t -> key -> 'a option
+    val remove: 'a t -> key -> 'a t
+    val compare: 'a t -> 'a t -> cmp:('a -> 'a -> int) -> int
+    val equal: 'a t -> 'a t -> eq:('a -> 'a -> bool) -> bool
+    val fold: 'a t -> init:'b -> f:('b -> key:key -> data:'a -> 'b) -> 'b
+    val map: 'a t -> f:('a -> 'b) -> 'b t
+    val mapi: 'a t -> f:(key -> 'a -> 'b) -> 'b t
+    val filter_map: 'a t -> f:('a -> 'b option) -> 'b t
+    val keys: 'a t -> key list
+    val data: 'a t -> 'a list
+    val to_alist: 'a t -> (key * 'a) list
+  end
+
+  module Make(Ord: Map.OrderedType) = struct
+    include Map.Make(Ord)
+
+    let to_alist = bindings
+
+    let keys t = List.map (to_alist t) ~f:fst
+    let data t = List.map (to_alist t) ~f:snd
+
+    let mem t key = mem key t
+    let add t key data = add key data t
+    let remove t key = remove key t
+
+    let compare t1 t2 ~cmp = compare cmp t1 t2
+    let equal t1 t2 ~eq = equal eq t1 t2
+
+    let find t key =
+      try
+        Some (find key t)
+      with
+      | Not_found -> None
+
+    let map t ~f = map f t
+
+    let mapi t ~f =
+      (* let f key data = f ~key ~data in *)
+      mapi f t
+
+    let fold t ~init ~f =
+      let f key data b = f b ~key ~data in
+      fold f t init
+
+    let filter_map t ~f =
+      fold t ~init:empty ~f:(fun t ~key ~data ->
+        match f data with
+        | Some data -> add t key data
+        | None -> t)
+  end
 end
 
 module Unix = struct

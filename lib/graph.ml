@@ -96,106 +96,94 @@ end) = struct
   type t = Edge_info.t Map.t
 
   let equal t1 t2 =
-    Map.equal Edge_info.equal t1 t2
+    Map.equal ~eq:Edge_info.equal t1 t2
 
   let empty = Map.empty
 
-  let nodes t =
-    List.map (Map.bindings t) ~f:(fun (node, _edge_info) -> node)
+  let nodes t = Map.keys t
 
   let edges t =
-    let collect_edges src edge_info edges =
+    Map.fold t ~init:[] ~f:(fun edges ~key:src ~data:edge_info ->
       let new_edges =
         List.map (Edge_info.out edge_info) ~f:(fun dest -> { from=src; to_=dest })
       in
-      new_edges @ edges
-    in
-    Map.fold collect_edges t []
+      new_edges @ edges)
 
-  let has_node t node =
-    Map.mem node t
+  let has_node t node = Map.mem t node
 
   let has_edge t ~from:src ~to_:dest =
     (* Check invariant: dest has_in src? *)
-    try
-      let edge_info = Map.find src t in
-      Edge_info.has_out edge_info dest
-    with Not_found -> false
+    match Map.find t src with
+    | Some edge_info -> Edge_info.has_out edge_info dest
+    | None -> false
 
   let add_node t node =
-    if Map.mem node t then
-      t
-    else
-      Map.add node Edge_info.empty t
+    if has_node t node then t
+    else Map.add t node Edge_info.empty
 
   let add_edge t ~from:src ~to_:dest =
     let add node ~to_:target ~with_:add t =
       let info =
-        try Map.find target t
-        with Not_found -> Edge_info.empty
+        match Map.find t target with
+        | Some edge_info -> edge_info
+        | None -> Edge_info.empty
       in
       let info = add info node in
-      Map.add target info t
+      Map.add t target info
     in
     let t = add dest ~to_:src ~with_:Edge_info.add_out t in
     let t = add src ~to_:dest ~with_:Edge_info.add_in t in
     t
 
   let follow t node =
-    try
-      let info = Map.find node t in
-      Some (Edge_info.out info)
-    with Not_found ->
-      None
+    match Map.find t node with
+    | Some edge_info -> Some (Edge_info.out edge_info)
+    | None -> None
 
   let rewind t node =
-    try
-      let info = Map.find node t in
-      Some (Edge_info.in_ info)
-    with Not_found ->
-      None
+    match Map.find t node with
+    | Some edge_info -> Some (Edge_info.in_ edge_info)
+    | None -> None
 
   let filter_edges t ~f:keep =
-    let filter_edges src edge_info t =
+    let filter_edges t ~key:src ~data:edge_info =
       List.fold (Edge_info.out edge_info) ~init:t ~f:(fun t dest ->
         if keep { from = src; to_ = dest } then
           add_edge t ~from:src ~to_:dest
         else t)
     in
     let base_map = List.fold (nodes t) ~init:Map.empty ~f:add_node in
-    Map.fold filter_edges t base_map
+    Map.fold t ~init:base_map ~f:filter_edges
 
   let remove_node t node =
     let (<>) x y = not (nodes_equal x y) in
-    try
-      let edge_info = Map.find node t in
+    match Map.find t node with
+    | Some edge_info ->
       let neighbors = Edge_info.connected edge_info in
       let t =
         List.fold neighbors ~init:t ~f:(fun t neighbor ->
-          try
-            let edge_info = Map.find neighbor t in
+          match Map.find t neighbor with
+          | Some edge_info ->
             let edge_info = Edge_info.filter edge_info ~f:((<>) node) in
-            Map.add neighbor edge_info t
-          with
-          | Not_found -> t)
+            Map.add t neighbor edge_info
+          | None -> t)
       in
-      Map.remove node t
-    with
+      Map.remove t node
     (* Probably shouldn't happen! *)
-    | Not_found -> t
+    | None -> t
 
   let filter_nodes t ~f:keep =
     let nodes = List.filter (nodes t) ~f:keep in
     let keep = List.mem nodes ~equal:nodes_equal in
     (* TODO: This could be optimized b/c we know exactly which edge_infos need to
      * be updated. *)
-    let filter_nodes node edge_info t =
+    let filter_nodes t ~key:node ~data:edge_info =
       if keep node then
         let edge_info = Edge_info.filter edge_info ~f:keep in
-        Map.add node edge_info t
+        Map.add t node edge_info
       else t
     in
-    Map.fold filter_nodes t Map.empty
+    Map.fold t ~init:Map.empty ~f:filter_nodes
 
   let of_edges edges =
     List.fold edges ~init:Map.empty ~f:(fun t { from=src; to_=dest } ->
@@ -234,7 +222,7 @@ end) = struct
     | order -> Some order
 
   let dump t node_to_string =
-    List.map (Map.bindings t) ~f:(fun (node, edge_info) ->
+    List.map (Map.to_alist t) ~f:(fun (node, edge_info) ->
       (node_to_string node)
       , `In (List.map ~f:node_to_string (Edge_info.in_ edge_info))
       , `Out (List.map ~f:node_to_string (Edge_info.out edge_info)))

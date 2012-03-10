@@ -7,11 +7,15 @@ module Module_environment = struct
 
   module Exported = struct
     type t =
-      { bindings: value String_map.t
+      { bindings: (value * int) String_map.t
       ; includes: string list }
     and value =
       | External
       | Known of t
+
+    let empty =
+      { bindings = String_map.empty
+      ; includes = [] }
   end
 
   (* The runtime representation of a module. *)
@@ -21,15 +25,11 @@ module Module_environment = struct
       | Anonymous of Exported.t
   end
 
+  open Representation
+
   type t =
-    { bindings: (binding, value) String_map.t
-    ; includes: [ `Public of string | `Private of string ] list
-  and representation =
-    | Named of string
-    | Anonymous of Exported.t
-  and value =
-    | External
-    | Known of Exported.t
+    { bindings: (binding * int) String_map.t
+    ; includes: [ `Public of string | `Private of string ] list }
   (* This Public/Private type exists to address this situation:
    *
    * module M = struct ... end
@@ -41,43 +41,49 @@ module Module_environment = struct
    * binding was added. Any includes added _after_ that point may shadow that
    * binding. But that binding will surely shadow anything with the same name
    * from an include _before_ that binding. *)
-  type binding =
-    | Public of value * int
+ and binding =
+    | Public of value
     (* an optional public binding that's been shadowed. *)
     | Private of value * (value * int) option
-
-  module Value = struct
-    type t = representation
-  end
+  and value =
+    | External
+    | Known of Exported.t
 
   let empty =
     { bindings = String_map.empty
     ; includes = [] }
 
-  let exported_environment t =
+  (* To determine what is exported, first we filter the inludes and add
+   * placeholders to mark the former position of the includes. Then, we take the
+   * bindings, and filter out all the private bindings (restoring earlier
+   * shadowed public bindings, if any), and updating the binding depths to
+   * correspond with locations in the "exported" includes environment. *)
+  let exported t =
     let tagged_includes =
       let num_includes = List.length t.includes in
       List.mapi t.includes ~f:(fun i inc -> num_includes - i, inc)
     in
-    let exported_includes =
-      List.filter_map tagged_includes ~f:(fun (i, inc) ->
+    let tagged_includes =
+      List.filter_map tagged_includes ~f:(fun (n, inc) ->
         match inc with
         | `Private _ -> None
-        | `Public name -> Some (i, name))
+        | `Public name -> Some (n, name))
     in
-    let exported_includes =
-      let num_exported_includes = List.length exported_includes in
-      List.mapi exported_includes ~f:ident
-    in
-    let translate_depth depth =
-      try
-        let new_depth, _ =
-          List.find exported_includes ~f:(fun (_new_depth, (old_depth, _)) ->
-            old_depth <= depth)
-        in
-        new_depth
-      with
-      | Not_found -> 0
+    let exported_includes = List.map tagged_includes ~f:snd in
+    let translate_depth orig_depth =
+      let depth_map =
+        let num_includes = List.length tagged_includes in
+        List.mapi tagged_includes ~f:(fun i (old_depth, _inc) ->
+          (num_includes - i, old_depth))
+      in
+      let new_binding_depth (new_depth, old_depth) =
+        if orig_depth <= old_depth then
+          Some new_depth
+        else None
+      in
+      match List.find_map depth_map ~f:new_binding_depth with
+      | Some new_depth -> new_depth
+      | None -> 0
     in
     let collect name (binding, depth) acc =
       let depth = translate_depth depth in
