@@ -176,6 +176,17 @@ module List = struct
       match f x with
       | Some y -> Some y
       | None -> find_map xs ~f
+
+  let divide xs ~at:n =
+    let rec take n front back =
+      if n <= 0 then
+        rev front, back
+      else
+        match back with
+        | [] -> rev front, back
+        | x :: xs -> take (n-1) (x :: front) xs
+    in
+    take n [] xs
 end
 
 module Non_empty_list = struct
@@ -190,6 +201,8 @@ module Non_empty_list = struct
   let hd (x, _) = x
 
   let split (x, xs) = x, xs
+
+  let of_split x xs = x, xs
 end
 
 module Map = struct

@@ -91,6 +91,8 @@ end) = struct
       ; out = Node_set.filter keep t.out }
   end
 
+  (* CR datkin: Could probably change some implementations now that Map is
+   * sweeksified. *)
   module Map = Map.Make(Node)
 
   type t = Edge_info.t Map.t

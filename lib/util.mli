@@ -59,6 +59,8 @@ module List : sig
     -> 'b list * 'c list
 
   val find_map: 'a t -> f:('a -> 'b option) -> 'b option
+
+  val divide: 'a list -> at:int -> 'a list * 'a list
 end
 
 module Non_empty_list : sig
@@ -73,6 +75,8 @@ module Non_empty_list : sig
   val hd: 'a t -> 'a
 
   val split: 'a t -> 'a * 'a list
+
+  val of_split: 'a -> 'a list -> 'a t
 end
 
 module Map : sig

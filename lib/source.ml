@@ -19,13 +19,13 @@ module Module_environment = struct
   end
 
   (* The runtime representation of a module. *)
-  module Representation = struct
+  module Repr = struct
     type t =
       | Named of string
       | Anonymous of Exported.t
   end
 
-  open Representation
+  open Repr
 
   type t =
     { bindings: (binding * int) String_map.t
@@ -45,9 +45,7 @@ module Module_environment = struct
     | Public of value
     (* an optional public binding that's been shadowed. *)
     | Private of value * (value * int) option
-  and value =
-    | External
-    | Known of Exported.t
+  and value = Exported.value
 
   let empty =
     { bindings = String_map.empty
@@ -85,24 +83,57 @@ module Module_environment = struct
       | Some new_depth -> new_depth
       | None -> 0
     in
-    let collect name (binding, depth) acc =
-      let depth = translate_depth depth in
-      match binding with
-      | Public value -> (value, depth) :: acc
-      | Private (_, Some value) -> (value, depth) :: acc
-      | Pirvate (_, None) -> acc
+    let exported_bindings =
+      String_map.filter_map t.bindings ~f:(fun (binding, depth) ->
+        match binding with
+        | Public value ->
+          Some (value, translate_depth depth)
+        | Private (_, Some (value, depth)) ->
+          Some (value, translate_depth depth)
+        | Private (_, None) -> None)
     in
-    let exported_includes =
-      List.map exported_includes ~f:(fun (_, (_, name)) -> name)
-    in
-    let exported_bindings = Map.fold collect t [] in
-    (exported_bindings, exported_includes)
+    { Exported.bindings = exported_bindings
+    ; includes = exported_includes }
 
   let new_binding ~depth ~is_private =
     if is_private
     then fun value -> (Public value, depth)
     else fun value -> (Private (value, None), depth)
 
+  let lookup t repr =
+    match repr with
+    | Named name ->
+      let bound_value, take_includes =
+        match String_map.find t.bindings name with
+        | Some (Public value, depth)
+        | Some (Private (value, _), depth) ->
+          Some value, List.length t.includes - depth
+        | None ->
+          None, 0
+      in
+      let includes =
+        List.map t.includes ~f:(fun inc ->
+          match inc with
+          | `Public name -> name
+          | `Private name -> name)
+      in
+      let after, before = List.divide includes ~at:take_includes in
+      let module Ex = Exported in
+      match bound_value, after, before with
+      (* CR datkin: is this right? *)
+      | Some Ex.External, _, _ -> `External (name, before)
+      | Some (Ex.Known exported), [], _ -> `Local exported
+      | Some (Ex.Known exported), inc :: others, _ ->
+        let incs = Non_empty_list.of_split inc others in
+        `Ambiguous (exported, incs)
+      (* CR datkin: This assumes we include stdlib in some base env. *)
+      | None, [], [] -> `Unbound
+      (* CR datkin: invariant, after should be empty if bound_value is none.
+       * How to enforce this? *)
+      | None, [], _ -> `External (name, before)
+      | None, _, _ -> assert false
+
+    (*
   let merge ~base:t ~new_:new_t ~is_private =
     let current_depth = List.length t.includes in
     let merge_one =
@@ -182,6 +213,7 @@ module Module_environment = struct
 
   let lookup t name =
     let { opens; includes; bindings } = t in
+  *)
 
 end
 
