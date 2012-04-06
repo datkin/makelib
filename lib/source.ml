@@ -100,38 +100,43 @@ module Module_environment = struct
     then fun value -> (Public value, depth)
     else fun value -> (Private (value, None), depth)
 
-  let lookup t repr =
+  let lookup t name =
+    let bound_value, take_includes =
+      match String_map.find t.bindings name with
+      | Some (Public value, depth)
+      | Some (Private (value, _), depth) ->
+        Some value, List.length t.includes - depth
+      | None ->
+        None, 0
+    in
+    let includes =
+      List.map t.includes ~f:(fun inc ->
+        match inc with
+        | `Public name -> name
+        | `Private name -> name)
+    in
+    let after, before = List.divide includes ~at:take_includes in
+    let module Ex = Exported in
+    match bound_value, after, before with
+    (* CR datkin: is this right? *)
+    | Some Ex.External, _, _ -> `External (name, before)
+    | Some (Ex.Known exported), [], _ -> `Local exported
+    | Some (Ex.Known exported), inc :: others, _ ->
+      let incs = Non_empty_list.of_split inc others in
+      `Ambiguous (exported, incs)
+    (* CR datkin: This assumes we include stdlib in some base env. *)
+    | None, [], [] -> `Unbound
+    (* CR datkin: invariant, after should be empty if bound_value is none.
+     * How to enforce this? *)
+    | None, [], _ -> `External (name, before)
+    | None, _ :: _, _ -> assert false
+
+  let open_module t repr =
     match repr with
-    | Named name ->
-      let bound_value, take_includes =
-        match String_map.find t.bindings name with
-        | Some (Public value, depth)
-        | Some (Private (value, _), depth) ->
-          Some value, List.length t.includes - depth
-        | None ->
-          None, 0
-      in
-      let includes =
-        List.map t.includes ~f:(fun inc ->
-          match inc with
-          | `Public name -> name
-          | `Private name -> name)
-      in
-      let after, before = List.divide includes ~at:take_includes in
-      let module Ex = Exported in
-      match bound_value, after, before with
-      (* CR datkin: is this right? *)
-      | Some Ex.External, _, _ -> `External (name, before)
-      | Some (Ex.Known exported), [], _ -> `Local exported
-      | Some (Ex.Known exported), inc :: others, _ ->
-        let incs = Non_empty_list.of_split inc others in
-        `Ambiguous (exported, incs)
-      (* CR datkin: This assumes we include stdlib in some base env. *)
-      | None, [], [] -> `Unbound
-      (* CR datkin: invariant, after should be empty if bound_value is none.
-       * How to enforce this? *)
-      | None, [], _ -> `External (name, before)
-      | None, _, _ -> assert false
+    | Repr.Named name ->
+      let 
+        (* Resolve the name. If it
+    | Repr.Exported ex
 
     (*
   let merge ~base:t ~new_:new_t ~is_private =

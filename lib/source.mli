@@ -60,7 +60,9 @@ module Module_environment : sig
    * http://caml.inria.fr/pub/docs/manual-ocaml/manual019.html *)
   (* If a named value is passed, these functions will resolve that name if it is
    * bound in the environment. *)
-  val open_module: t -> Repr.t -> t
+  (* Open statements can only use a module name; this will resolve the name in
+   * the given environment. *)
+  val open_module: t -> string -> t
 
   val include_module: t -> Repr.t -> t
 
