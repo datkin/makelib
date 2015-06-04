@@ -1,0 +1,39 @@
+from: ocamlfind ocamldep -verbose -package unix -package threads -package sexplib.syntax -package sexplib -package res -package fieldslib.syntax -package fieldslib -package core_extended -package core -package camlp4.macro -syntax camlp4o -modules lib/term.ml
+
+-->
+
+ocamldep.opt -modules -pp "camlp4 '-I' '/usr/local/lib/ocaml/camlp4' '-I' '/usr/local/lib/ocaml/site-lib/type-conv' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml/site-lib/num' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/camlp4' '-parser' 'o' '-parser' 'op' '-printer' 'p' 'pa_type_conv.cma' 'unix.cma' 'bigarray.cma' 'nums.cma' 'sexplib.cma' 'pa_sexp_conv.cma' 'fieldslib.cma' 'pa_fields_conv.cma' '-parser' 'Camlp4MacroParser' " lib/term.ml
+
+
+from: ocamlfind ocamlc -c -g -ccopt -D_LARGEFILE64_SOURCE -package unix -package threads -package sexplib.syntax -package sexplib -package res -package fieldslib.syntax -package fieldslib -package core_extended -package core -package camlp4.macro -syntax camlp4o -thread -I lib -o lib/term.cmo lib/term.ml
+
+
+ocamlc.opt -c -g -ccopt -D_LARGEFILE64_SOURCE -I lib -o lib/term.cmo -verbose -thread -I /usr/local/lib/ocaml/site-lib/type-conv -I /usr/local/lib/ocaml/site-lib/num -I /usr/local/lib/ocaml/site-lib/sexplib -I /usr/local/lib/ocaml/site-lib/res -I /usr/local/lib/ocaml/site-lib/fieldslib -I /usr/local/lib/ocaml/site-lib/bin_prot -I /usr/local/lib/ocaml/site-lib/oUnit -I /usr/local/lib/ocaml/site-lib/pa_ounit -I /usr/local/lib/ocaml/site-lib/pa_pipebang -I /usr/local/lib/ocaml/site-lib/variantslib -I /usr/local/lib/ocaml/site-lib/core -I /usr/local/lib/ocaml/site-lib/pcre -I /usr/local/lib/ocaml/site-lib/core_extended -I /usr/local/lib/ocaml/camlp4 -pp "camlp4 '-I' '/usr/local/lib/ocaml/camlp4' '-I' '/usr/local/lib/ocaml/site-lib/type-conv' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml/site-lib/num' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/camlp4' '-parser' 'o' '-parser' 'op' '-printer' 'p' 'pa_type_conv.cma' 'unix.cma' 'bigarray.cma' 'nums.cma' 'sexplib.cma' 'pa_sexp_conv.cma' 'fieldslib.cma' 'pa_fields_conv.cma' '-parser' 'Camlp4MacroParser' " lib/term.ml
+
+executes
+
+camlp4 '-I' '/usr/local/lib/ocaml/camlp4' '-I' '/usr/local/lib/ocaml/site-lib/type-conv' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml' '-I' '/usr/local/lib/ocaml/site-lib/num' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/sexplib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/site-lib/fieldslib' '-I' '/usr/local/lib/ocaml/camlp4' '-parser' 'o' '-parser' 'op' '-printer' 'p' 'pa_type_conv.cma' 'unix.cma' 'bigarray.cma' 'nums.cma' 'sexplib.cma' 'pa_sexp_conv.cma' 'fieldslib.cma' 'pa_fields_conv.cma' '-parser' 'Camlp4MacroParser'  'lib/term.ml' > /tmp/camlppe56afd
+
+http://martin.jambon.free.fr/extend-ocaml-syntax.html
+
+http://andreiformiga.com/blog/?p=99
+
+camlp4o examples/test.ml -I /usr/local/lib/ocaml/site-lib/type-conv/ -I /usr/local/lib/ocaml/site-lib/sexplib/ pa_type_conv.cma pa_sexp_conv.cma
+
+ocamlfind query sexplib.syntax -a-format -predicates syntax,preprocessor
+
+ocamlfind query sexplib -a-format -predicates byte
+
+some explanation of predicates:
+
+http://projects.camlcity.org/projects/dl/findlib-1.2.1/doc/guide-html/x412.html
+http://projects.camlcity.org/projects/dl/findlib-1.2.7/doc/guide-html/c274.html
+
+some examples predicates:
+
+Effective set of preprocessor predicates: preprocessor,syntax,camlp4o
+Effective set of compiler predicates: pkg_unix,pkg_threads.posix,pkg_threads,pkg_camlp4,pkg_type-conv,pkg_bigarray,pkg_num.core,pkg_num,pkg_sexplib,pkg_sexplib.syntax,pkg_res,pkg_fieldslib,pkg_fieldslib.syntax,pkg_bin_prot,pkg_bin_prot.syntax,pkg_oUnit,pkg_pa_ounit,pkg_pa_pipebang,pkg_variantslib,pkg_variantslib.syntax,pkg_core,pkg_pcre,pkg_core_extended,pkg_camlp4.macro,syntax,autolink,mt,mt_posix,byte
+
+findlib module docs:
+
+http://docs.camlcity.org/docs/godipkg/3.12/godi-findlib/lib/ocaml/pkg-lib/findlib/findlib.mli

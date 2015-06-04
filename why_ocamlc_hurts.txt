@@ -1,0 +1,24 @@
+stdlib.cma is silently added when compiling, but other .cma files present in
+the lib directory are not (eg unix.cma). If you're looking at the library
+reference [1], it's not clear that things like unix and dynlink aren't part of
+the standard library. ... I guess if you read the documentation this part is
+actually pretty clear.
+
+Guess the difference between this:
+
+  ocamlc -c lib/foo.mli -o build/foo.cmi
+
+and this:
+
+  ocamlc -c -o build/foo.cmi lib/foo.mli
+
+The first one _just ignores_ the -o option.
+
+Better yet, the "-c" is required, otherwise the -o option is only specifying
+the output executable (even though when you only pass a .mli file, it stops as
+soon as the .cmi is compiled -- it "silently fails" to create an executable).
+
+Actually, the extension is _just ignored_. I could pass -o build/foo.i, and
+I'll still get out build/foo.cmi.
+
+[1] http://caml.inria.fr/pub/docs/manual-ocaml/libref/
